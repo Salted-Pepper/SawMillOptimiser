@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.offsetbox import AnnotationBbox, AuxTransformBox
 
 import constants
 
@@ -89,11 +88,30 @@ class Shape:
     def remove_from_log(self):
         self.log = None
 
-    def check_if_within_log(self):
+    def shape_is_within_log(self) -> bool:
         if self.log is None:
             print("Rectangle not assigned to a log")
-            return
-        diam = self.log.diameter
+            return True
+        """
+        Checks if the corner positions are contained in the log
+        """
+        y_min_left, y_plus_left = self.log.calculate_edge_positions_on_circle(self.x)
+        x_min_top, x_plus_top = self.log.calculate_edge_positions_on_circle(self.y + self.height)
+
+        y_min_right, y_plus_right = self.log.calculate_edge_positions_on_circle(self.x + self.width)
+        x_min_bot, x_plus_bot = self.log.calculate_edge_positions_on_circle(self.y)
+
+        if self.x >= x_min_bot and \
+                self.x >= x_min_top and \
+                self.x + self.width <= x_plus_top and \
+                self.x + self.width <= x_plus_bot and \
+                self.y >= y_min_left and \
+                self.y >= y_min_right and \
+                self.y + self.height <= y_plus_left and \
+                self.y + self.height <= y_plus_right:
+            return True
+        else:
+            return False
 
 
 def check_shapes_intersect(shape_a: Shape, shape_b: Shape):
@@ -115,4 +133,3 @@ def check_shapes_intersect(shape_a: Shape, shape_b: Shape):
         return True
     else:
         return False
-

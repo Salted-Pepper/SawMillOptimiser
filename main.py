@@ -21,6 +21,10 @@ def plot_circle(fig, ax, diam, ) -> plt.figure:
 
 def check_if_feasible(list_of_shapes):
     for index_1, s1 in enumerate(list_of_shapes):
+
+        if not s1.shape_is_within_log():
+            return False
+
         for s2 in list_of_shapes[index_1 + 1:]:
             if check_shapes_intersect(s1, s2):
                 print(f"Shapes {s1.id} and {s2.id} intersect!")
@@ -40,10 +44,6 @@ if __name__ == '__main__':
     shapes = []
 
     if check_if_feasible(shapes):
-        print("No conflicting rectangles found")
+        print("No conflicting rectangles found!")
     else:
         print("Conflicting shape placement!")
-
-
-
-
