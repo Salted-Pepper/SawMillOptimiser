@@ -4,9 +4,14 @@ from shapes import Shape
 import math
 import matplotlib.pyplot as plt
 
+log_id = 0
+
 
 class Log:
     def __init__(self, diameter: float) -> None:
+        global log_id
+        self.log_id = log_id
+        log_id += 1
         self.diameter = diameter
         self.recovery_rate = None
         self.volume = math.pi * (diameter / 2) ** 2
@@ -25,6 +30,9 @@ class Log:
         self.fig = fig
         self.ax = ax
 
+    def return_plot(self) -> tuple:
+        return self.fig, self.ax
+
     def calculate_edge_positions_on_circle(self, x: float) -> tuple:
         r = self.diameter / 2
         y_min = r - math.sqrt(r**2 - (x-r)**2)
@@ -34,6 +42,7 @@ class Log:
     def check_if_feasible(self) -> bool:
         for index_1, s1 in enumerate(self.shapes):
             if not s1.shape_is_within_log():
+                print(f"Shape {s1.id} falls outside of log {self.log_id}")
                 return False
 
             for s2 in self.shapes[index_1 + 1:]:
@@ -46,6 +55,15 @@ class Log:
                 else:
                     print(f"Shapes {s1.id} and {s2.id} do not intersect")
         return True
+
+    def add_shape(self, shape) -> None:
+        self.shapes.append(shape)
+
+    def remove_shape(self, shape) -> None:
+        try:
+            self.shapes.remove(shape)
+        except ValueError:
+            print(f"Was not able to remove shape {shape.id} from ")
 
 
 def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:

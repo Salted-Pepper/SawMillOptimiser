@@ -8,7 +8,7 @@ type_id = 0
 
 
 class ShapeType:
-    def __init__(self, width: float, height: float, demand: int):
+    def __init__(self, width: float, height: float, demand: int, colour: str):
         global type_id
         """
         :param width: General width of shape
@@ -20,6 +20,7 @@ class ShapeType:
         self.width = width
         self.height = height
         self.demand = demand
+        self.colour = colour
 
 
 class Shape:
@@ -41,6 +42,8 @@ class Shape:
         self.log = None
         self.colour = colour
         self.placed = False
+        self.rect = None
+        self.rect_kerf = None
 
     def set_location(self, x=None, y=None) -> None:
         """
@@ -73,24 +76,31 @@ class Shape:
         self.width = self.height
         self.height = width
 
-    def add_rect_to_plot(self, fig: plt.figure, ax: plt.axes) -> plt.figure:
+    def add_rect_to_plot(self) -> plt.figure:
+
+        if self.log is None:
+            print("Piece not attributed to log, not able to show figure")
+            return None
+
+        fig = self.log.fig
+        ax = self.log.ax
 
         if self.colour is not None:
-            rect = mpatches.Rectangle((self.x, self.y),
-                                      self.width, self.height,
-                                      color=self.colour, alpha=0.9)
+            self.rect = mpatches.Rectangle((self.x, self.y),
+                                           self.width, self.height,
+                                           color=self.colour, alpha=0.9)
         else:
-            rect = mpatches.Rectangle((self.x, self.y),
-                                      self.width, self.height,
-                                      alpha=0.9)
+            self.rect = mpatches.Rectangle((self.x, self.y),
+                                           self.width, self.height,
+                                           alpha=0.9)
 
-        rect_kerf = mpatches.Rectangle((self.x - constants.saw_kerf,
-                                        self.y - constants.saw_kerf),
-                                       self.width + 2 * constants.saw_kerf,
-                                       self.height + 2 * constants.saw_kerf,
-                                       color="black")
-        ax.add_patch(rect_kerf)
-        ax.add_patch(rect)
+        self.rect_kerf = mpatches.Rectangle((self.x - constants.saw_kerf,
+                                             self.y - constants.saw_kerf),
+                                            self.width + 2 * constants.saw_kerf,
+                                            self.height + 2 * constants.saw_kerf,
+                                            color="black")
+        ax.add_patch(self.rect_kerf)
+        ax.add_patch(self.rect)
 
         ax.text(self.x + constants.rect_text_margin * self.width,
                 self.y + constants.rect_text_margin * self.height,
@@ -101,9 +111,22 @@ class Shape:
 
     def assign_to_log(self, log):
         self.log = log
+        self.log.add_shape(self)
 
     def remove_from_log(self):
+        self.log.remove_shape(self)
+        self.remove_from_plot()
         self.log = None
+        self.x = None
+        self.y = None
+
+    def remove_from_plot(self):
+        if self.rect is not None:
+            self.rect.remove()
+            self.rect_kerf.remove()
+
+            self.rect = None
+            self.rect_kerf = None
 
     def shape_is_within_log(self) -> bool:
         if self.log is None:
@@ -131,4 +154,22 @@ class Shape:
             return False
 
 
+def sort_shapes_on_size(shapes):
+    """
+    :param shapes: List of Shapes
+    :return: Sorted List of Shapes
+
+    This function sorts the set of produced shapes by size, prioritizing height and then width.
+    """
+    sorted_list = [shapes[0]]
+    for shape in shapes[1:]:
+        for index, s_shape in enumerate(sorted_list.copy()):
+            if shape.height < s_shape.height:
+                sorted_list.insert(index, shape)
+                continue
+            elif shape.height == s_shape.height and shape.width < s_shape.width:
+                sorted_list.insert(index, shape)
+                continue
+    sorted_list.reverse()
+    return sorted_list
 
