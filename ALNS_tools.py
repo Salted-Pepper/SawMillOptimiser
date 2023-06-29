@@ -24,5 +24,5 @@ def calculate_max_width_rect(height, diameter):
     inner_value = r ** 2 - (r - (diameter - height)/2)**2
     x_plus = r + math.sqrt(inner_value)
     x_min = r - math.sqrt(inner_value)
-    return x_plus - x_min
+    return x_plus - x_min, x_min, x_plus
 

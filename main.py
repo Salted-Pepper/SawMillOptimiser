@@ -33,7 +33,7 @@ def check_feasibility(list_of_logs):
         print("No conflicting logs found!")
         return True
     else:
-        print("Conflicting shape placement!")
+        print("Incorrect shape placement!")
         return False
 
 
@@ -48,6 +48,8 @@ if __name__ == '__main__':
     """
     logs.append(Log(450))
     logs.append(Log(500))
+    logs.append(Log(350))
+    logs.append(Log(460))
 
     """
     Import Shape Data
@@ -70,19 +72,18 @@ if __name__ == '__main__':
     """
     Create Shapes Based on Demand
     """
-    for s_type in shape_types:
-        for i in range(s_type.demand):
-            shapes.append(Shape(shape_type=s_type,
-                                width=s_type.width,
-                                height=s_type.height,
-                                ratio=s_type.ratio,
-                                colour=s_type.colour))
+    # TODO: Define how shapes are created/distributed
 
-    ALNS.greedy_place(logs=logs,
+    ALNS.greedy_place(shapes=shapes,
+                      logs=logs,
                       shape_types=shape_types)
 
     for shape in shapes:
         shape.add_rect_to_plot()
+
+    for log in logs:
+        log.update_plot_title()
+        log.show_plot()
 
     check_feasibility(list_of_logs=logs)
 

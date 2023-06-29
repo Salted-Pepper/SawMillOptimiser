@@ -25,7 +25,7 @@ class ShapeType:
 
 
 class Shape:
-    def __init__(self, shape_type: ShapeType, width: float, height: float, ratio: float, x=None, y=None, colour=None):
+    def __init__(self, shape_type: ShapeType, x=None, y=None):
         global shape_id
         """
         :param width:
@@ -33,16 +33,16 @@ class Shape:
         :param x: x coordinate of bottom left corner of figure
         :param y: y coordinate of bottom left corner of figure
         """
-        self.id = shape_id
+        self.shape_id = shape_id
         self.type = shape_type
         shape_id += 1
-        self.width = width
-        self.height = height
-        self.ratio = ratio
+        self.width = shape_type.width
+        self.height = shape_type.height
+        self.ratio = shape_type.ratio
         self.x = x
         self.y = y
         self.log = None
-        self.colour = colour
+        self.colour = shape_type.colour
         self.placed = False
         self.rect = None
         self.rect_kerf = None
@@ -84,6 +84,13 @@ class Shape:
             print("Piece not attributed to log, not able to show figure")
             return None
 
+        if self.x is None:
+            print("X coordinate not set.")
+            return
+        if self.y is None:
+            print("Y coordinate not set.")
+            return
+
         fig = self.log.fig
         ax = self.log.ax
 
@@ -110,6 +117,9 @@ class Shape:
                 color="white")
 
         return fig, ax
+
+    def get_volume(self) -> float:
+        return self.width * self.height
 
     def assign_to_log(self, log):
         self.log = log
