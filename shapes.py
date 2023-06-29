@@ -8,7 +8,7 @@ type_id = 0
 
 
 class ShapeType:
-    def __init__(self, width: float, height: float, demand: int, colour: str):
+    def __init__(self, width: float, height: float, ratio: float, demand: int, colour: str):
         global type_id
         """
         :param width: General width of shape
@@ -19,12 +19,13 @@ class ShapeType:
         type_id += 1
         self.width = width
         self.height = height
+        self.ratio = ratio
         self.demand = demand
         self.colour = colour
 
 
 class Shape:
-    def __init__(self, shape_type: ShapeType, width: float, height: float, x=None, y=None, colour=None):
+    def __init__(self, shape_type: ShapeType, width: float, height: float, ratio: float, x=None, y=None, colour=None):
         global shape_id
         """
         :param width:
@@ -37,6 +38,7 @@ class Shape:
         shape_id += 1
         self.width = width
         self.height = height
+        self.ratio = ratio
         self.x = x
         self.y = y
         self.log = None

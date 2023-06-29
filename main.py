@@ -5,6 +5,8 @@ from logs import Log
 from shapes import Shape, ShapeType, sort_shapes_on_size
 import ALNS
 
+import pandas as pd
+
 """
 default measurement: millimeters
 default dimensionality: width x height
@@ -48,29 +50,22 @@ if __name__ == '__main__':
     logs.append(Log(500))
 
     """
+    Import Shape Data
+    """
+    df_shapes = pd.read_excel("ShapeData.xlsx")
+
+    """
     Create Shape Types
     """
-    square_1 = ShapeType(width=125,
-                         height=125,
-                         demand=3,
-                         colour="blue")
-    rect_1 = ShapeType(width=100,
-                       height=50,
-                       demand=1,
-                       colour="red")
-    rect_2 = ShapeType(width=100,
-                       height=25,
-                       demand=3,
-                       colour="green")
-    rect_3 = ShapeType(width=75,
-                       height=50,
-                       demand=2,
-                       colour="purple")
-    rect_4 = ShapeType(height=50,
-                       width=50,
-                       demand=1,
-                       colour="orange")
-    shape_types = [square_1, rect_1, rect_2, rect_3, rect_4]
+    shape_types = []
+
+    for index, row in df_shapes.iterrows():
+        shape_types.append(ShapeType(width=row['w'],
+                                     height=row['h'],
+                                     ratio=row['ratio'],
+                                     demand=row['demand'],
+                                     colour=row['colour']
+                                     ))
 
     """
     Create Shapes Based on Demand
@@ -80,10 +75,10 @@ if __name__ == '__main__':
             shapes.append(Shape(shape_type=s_type,
                                 width=s_type.width,
                                 height=s_type.height,
+                                ratio=s_type.ratio,
                                 colour=s_type.colour))
 
-    ALNS.greedy_place(shapes=shapes,
-                      logs=logs,
+    ALNS.greedy_place(logs=logs,
                       shape_types=shape_types)
 
     for shape in shapes:
