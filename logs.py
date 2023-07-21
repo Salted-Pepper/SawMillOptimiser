@@ -50,9 +50,9 @@ class Log:
 
     def calculate_edge_positions_on_circle(self, z: float) -> tuple:
         r = self.diameter / 2
-        y_min = r - math.sqrt(r ** 2 - (z - r) ** 2)
-        y_plus = r + math.sqrt(r ** 2 - (z - r) ** 2)
-        return y_min, y_plus
+        z_min = r - math.sqrt(r ** 2 - (z - r) ** 2)
+        z_plus = r + math.sqrt(r ** 2 - (z - r) ** 2)
+        return z_min, z_plus
 
     def check_if_feasible(self) -> bool:
         for index_1, s1 in enumerate(self.shapes):

@@ -47,9 +47,9 @@ if __name__ == '__main__':
     Create Logs
     """
     logs.append(Log(450))
-    logs.append(Log(500))
-    logs.append(Log(350))
-    logs.append(Log(460))
+    # logs.append(Log(500))
+    # logs.append(Log(350))
+    # logs.append(Log(460))
 
     """
     Import Shape Data
@@ -68,6 +68,17 @@ if __name__ == '__main__':
                                      demand=row['demand'],
                                      colour=row['colour']
                                      ))
+    transposed_shapes = []
+
+    for shape in shape_types:
+        transposed_shapes.append(ShapeType(width=shape.height,
+                                           height=shape.width,
+                                           ratio=shape.width / shape.height,
+                                           demand=shape.demand,
+                                           colour=shape.colour,
+                                           duplicate_id=shape.type_id))
+
+    shape_types.extend(transposed_shapes)
 
     """
     Create Shapes Based on Demand
