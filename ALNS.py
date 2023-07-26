@@ -24,13 +24,15 @@ def run_ALNS(logs: list, shape_types: list):
     iteration = 0
     temperature = 100
 
-    methods = [Method(name="TUCK"), Method(name="REPACK"), Method(name="")]
+    methods = [Method(name="TUCK"), Method(name="SWITCH"), Method(name="REPACK")]
 
     while temperature > 0:
         update_method_probability(methods)
         method = random.choices(methods, weights=[method.probability for method in methods])
 
-        method.execute()
+        log = ALNS_tools.select_log(logs)
+
+        method.execute(log)
 
         ALNS_tools.update_log_scores(logs)
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
@@ -57,6 +59,10 @@ def update_temperature(temperature: float, solution_accepted: bool, delta: float
 def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max: float,
                                 candidate_shapes: list, shape_types: list, shapes: list, log: Log) -> list:
     """
+    This function applies an LP solver to a given space, optimising the space for the given candidate shapes.
+    The given space, described by (x,y)-values, includes the saw kerf on the sides.
+    It returns a new set of shapes that can be added in the described location.
+
     :param x_min: Left side x-value
     :param x_max: Right side x-value
     :param y_min: Bottom side y-value
@@ -66,10 +72,6 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
     :param shapes: List of shapes currently in the considered log
     :param log: Log to which the shapes will be added
     :return shapes: List of added shapes
-
-    This function applies an LP solver to the given space, optimising the space for the given candidate shapes.
-    The given space, described by (x,y)-values, includes the saw kerf on the sides.
-    It returns a new set of shapes that can be added in the described location.
     """
     solutions = []
 
@@ -306,8 +308,8 @@ def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
                               f"h:{shape_type.height} at ({x}, {y_south}) and ({x}, {y_north})")
                 x += shape_type.width + constants.saw_kerf
 
-        shapes = create_corner_solution(shapes, log, shape_types, h, h_n, y_north, y_south, "NW")
-        shapes = create_corner_solution(shapes, log, shape_types, h, h_n, y_north, y_south, "NE")
+        shapes = create_corner_solution(shapes, log, shape_types, h, h_n, y_north, "NW")
+        shapes = create_corner_solution(shapes, log, shape_types, h, h_n, y_north, "NE")
 
         shapes = create_edge_solutions(shapes, log, shape_types, h, h_n)
 
@@ -321,7 +323,7 @@ def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
 
 
 def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, h_n: float,
-                           y_north: float, y_south: float, orientation: str):
+                           y_north: float, orientation: str):
     """
     Fill out log corner positions
     Step 1 - Locate left and right corner triangles (Mirror for north and south)

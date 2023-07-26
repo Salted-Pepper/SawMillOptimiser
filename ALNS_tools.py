@@ -1,6 +1,7 @@
 import math
 
 import pandas as pd
+import random
 
 from shapes import Shape
 from logs import Log
@@ -103,6 +104,17 @@ def save_iteration_data(logs: list, df: pd.DataFrame, iteration: int) -> pd.Data
                            "saw_dust": log.saw_dust, "volume_used": log.volume_used, "efficiency": log.efficiency}
 
     return df
+
+
+def select_log(logs: list) -> Log:
+    """
+    Selects a random log based on the relative inefficiency
+
+    :param logs:
+    :return:
+    """
+    total_efficiency = sum([1 - log.efficiency for log in logs])
+    return random.choices(logs, weights=[(1 - log.efficiency) / total_efficiency for log in logs])
 
 
 def plot_iteration_data():
