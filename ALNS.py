@@ -1,8 +1,11 @@
 import logging
+import pandas as pd
 import numpy as np
+import random
 import datetime
 from logs import Log
 import math
+from ALNS_methods import Method
 from ortools.linear_solver import pywraplp
 
 import ALNS_tools
@@ -13,9 +16,46 @@ date = datetime.date.today()
 logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%d-%b-%y %H:%M:%S")
 
+solution_quality_df = pd.DataFrame(columns=["iteration", "log", "score", "saw_dust", "volume_used", "efficiency"])
 
-def fit_shapes_in_rect_by_lp(x_min: float, x_max: float, y_min: float, y_max: float,
-                             candidate_shapes: list, shape_types: list, shapes: list,  log: Log) -> list:
+
+def run_ALNS(logs: list, shape_types: list):
+    global solution_quality_df
+    iteration = 0
+    temperature = 100
+
+    methods = [Method(name="TUCK"), Method(name="REPACK"), Method(name="")]
+
+    while temperature > 0:
+        update_method_probability(methods)
+        method = random.choices(methods, weights=[method.probability for method in methods])
+
+        method.execute()
+
+        ALNS_tools.update_log_scores(logs)
+        solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
+
+        # temperature = update_temperature(temperature)
+
+
+def update_method_probability(methods: list):
+    total_performance = sum([method.performance for method in methods])
+    for method in methods:
+        method.probability = method.total_performance / total_performance
+
+
+def update_temperature(temperature: float, solution_accepted: bool, delta: float) -> float:
+    accept_ratio = 0.5
+    decline_ratio = 1
+    if solution_accepted:
+        temperature = temperature - (math.sqrt(delta) * accept_ratio)
+    else:
+        temperature -= decline_ratio
+    return temperature
+
+
+def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max: float,
+                                candidate_shapes: list, shape_types: list, shapes: list, log: Log) -> list:
     """
     :param x_min: Left side x-value
     :param x_max: Right side x-value

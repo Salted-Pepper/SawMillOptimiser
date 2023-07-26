@@ -10,13 +10,21 @@ log_id = 0
 class Log:
     def __init__(self, diameter: float) -> None:
         global log_id
+
+        # Log data
         self.log_id = log_id
         log_id += 1
         self.diameter = diameter
+
+        # Efficiency Measures
         self.recovery_rate = None
         self.volume = math.pi * (diameter / 2) ** 2
         self.volume_used = 0
+        self.saw_dust = 0
         self.efficiency = 0
+        self.score = -math.inf
+
+        # Plotting Variables
         self.fig = None
         self.ax = None
         self.shapes = []
