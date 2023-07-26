@@ -16,6 +16,7 @@ class Log:
         self.recovery_rate = None
         self.volume = math.pi * (diameter / 2) ** 2
         self.volume_used = 0
+        self.efficiency = 0
         self.fig = None
         self.ax = None
         self.shapes = []
@@ -39,7 +40,8 @@ class Log:
                           r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}")
 
     def calculate_efficiency(self) -> float:
-        return self.volume_used / self.volume
+        self.efficiency = self.volume_used / self.volume
+        return self.efficiency
 
     def return_plot(self) -> tuple:
         return self.fig, self.ax
@@ -74,6 +76,7 @@ class Log:
     def add_shape(self, shape) -> None:
         self.shapes.append(shape)
         self.volume_used += shape.get_volume()
+        self.calculate_efficiency()
 
     def calculate_sawdust_created(self) -> float:
         # TODO: Create function to calculate sawdust (circumference - shared circumference)
@@ -82,8 +85,9 @@ class Log:
     def remove_shape(self, shape) -> None:
         try:
             self.shapes.remove(shape)
+            self.calculate_efficiency()
         except ValueError:
-            print(f"Was not able to remove shape {shape.id} from ")
+            print(f"Was not able to remove shape {shape.id} from log {self.log_id}.")
 
 
 def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:

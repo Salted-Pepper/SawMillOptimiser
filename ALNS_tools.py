@@ -41,6 +41,18 @@ def find_left_most_shape(shapes: list) -> Shape:
     return minimal_shape
 
 
+def find_right_most_shape(shapes: list) -> Shape:
+    left = -1
+    maximal_shape = None
+
+    for shape in shapes:
+        if shape.x > left:
+            maximal_shape = shape
+            left = shape.x
+
+    return maximal_shape
+
+
 def find_max_rectangle_width(log: Log, height: float, x: int, y: int, orientation: str) -> tuple:
     """
     :param log: Log Object
@@ -53,13 +65,11 @@ def find_max_rectangle_width(log: Log, height: float, x: int, y: int, orientatio
 
     r = log.diameter / 2
 
-    sub_equation = r**2 - (height + y - r)**2
-
     if orientation == "NW":
-        x_m = r - math.sqrt(sub_equation)
+        x_m = r - math.sqrt(r**2 - (height + y - r)**2)
         return x - x_m, x_m, x
     elif orientation == "NE":
-        x_m = r + math.sqrt(sub_equation)
+        x_m = r + math.sqrt(r**2 - (height + y - r)**2)
         return x_m - x, x, x_m
     elif orientation == "SW":
         raise NotImplemented("SW Not yet implemented")

@@ -47,9 +47,9 @@ if __name__ == '__main__':
     Create Logs
     """
     logs.append(Log(450))
-    # logs.append(Log(500))
-    # logs.append(Log(350))
-    # logs.append(Log(460))
+    logs.append(Log(500))
+    logs.append(Log(350))
+    logs.append(Log(460))
 
     """
     Import Shape Data

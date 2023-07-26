@@ -1,11 +1,94 @@
 import logging
 import numpy as np
+import datetime
+from logs import Log
 import math
 from ortools.linear_solver import pywraplp
 
 import ALNS_tools
 import constants
 from shapes import Shape
+
+date = datetime.date.today()
+logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%d-%b-%y %H:%M:%S")
+
+
+def fit_shapes_in_rect_by_lp(x_min: float, x_max: float, y_min: float, y_max: float,
+                             candidate_shapes: list, shape_types: list, shapes: list,  log: Log) -> list:
+    """
+    :param x_min: Left side x-value
+    :param x_max: Right side x-value
+    :param y_min: Bottom side y-value
+    :param y_max: Top side y-value
+    :param candidate_shapes: List of shapes to fill the given space
+    :param shape_types: List of all available shapes
+    :param shapes: List of shapes currently in the considered log
+    :param log: Log to which the shapes will be added
+    :return shapes: List of added shapes
+
+    This function applies an LP solver to the given space, optimising the space for the given candidate shapes.
+    The given space, described by (x,y)-values, includes the saw kerf on the sides.
+    It returns a new set of shapes that can be added in the described location.
+    """
+    solutions = []
+
+    width = x_max - x_min - 2 * constants.saw_kerf
+    height = y_max - y_min - 2 * constants.saw_kerf
+
+    candidate_shapes = [s for s in candidate_shapes if s.width <= width]
+
+    for shape in candidate_shapes:
+        h_m = shape.height
+        shorter_shapes = [s for s in candidate_shapes if s.height <= h_m]
+
+        solver = pywraplp.Solver.CreateSolver('SAT')
+
+        variables = []
+
+        for short_shape in shorter_shapes:
+            variables.append([solver.IntVar(0, solver.infinity(), 'x' + str(short_shape.type_id)),
+                              short_shape.width, short_shape.height, short_shape.type_id])
+
+            # add constraint for maximum length
+            solver.Add(sum([v[0] * (v[1] + constants.saw_kerf) for v in variables]) <= width)
+            solver.Maximize(sum([v[0] * v[1] * v[2] for v in variables]))
+
+        status = solver.Solve()
+
+        if status == pywraplp.Solver.OPTIMAL:
+            values = [[v[3], v[0].solution_value()] for v in variables]
+            usage = solver.Objective().Value()
+        else:
+            raise ValueError("Solution Not Converged")
+
+        rel_usage = usage / (height * width)
+
+        solutions.append([rel_usage,
+                          values,
+                          [h_m, x_min, x_max, height]])
+
+    best_solution = max(solutions, key=lambda solution: solution[0])
+    shapes_top = best_solution[1]
+
+    x_minimal = best_solution[2][1]
+    x_maximal = best_solution[2][2]
+
+    x = x_minimal + constants.saw_kerf
+
+    for shape_info in shapes_top:
+        shape_id = shape_info[0]
+        quantity = int(shape_info[1])
+        shape_type = shape_types[shape_id]
+
+        for i in range(quantity):
+            shapes.append(Shape(shape_type=shape_type, x=x, y=y_min))
+            logging.debug(f"Added shape {shape_type.type_id}, at location {x, y_min}")
+            x += shape_type.width + constants.saw_kerf
+            if x > x_maximal:
+                raise ValueError(f"Exceeding maximum x-value {x} > {x_maximal}.")
+
+    return shapes
 
 
 def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
@@ -22,7 +105,7 @@ def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
         and then consider the utilisation rate of that rectangle.
         """
         solutions = []
-        print(f"Optimising for log with diameter {log.diameter}")
+        logging.debug(f"Optimising for log with diameter {log.diameter}")
 
         for shape in shape_types:
 
@@ -130,17 +213,17 @@ def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
                               [shape.height, x_left, x_right, h_n]])
 
         best_complete_solution = max(solutions, key=lambda solution: solution[0])
-        print(f"Optimal solution has a total usage rate of {best_complete_solution[0]}")
+        logging.debug(f"Optimal solution has a total usage rate of {best_complete_solution[0]}")
 
         shapes_in_central = best_complete_solution[1]
         shapes_in_top_bot = best_complete_solution[2]
 
         for var in best_complete_solution[1]:
-            print(f"Shape {var[0]} has quantity {var[1]}")
+            logging.debug(f"Shape {var[0]} has quantity {var[1]}")
 
-        print(f"Stage two variables are given by:")
+        logging.debug(f"Stage two variables are given by:")
         for var in best_complete_solution[2]:
-            print(f"Shape {var[0]} has quantity {var[1]}")
+            logging.debug(f"Shape {var[0]} has quantity {var[1]}")
 
         """
         Creating the shapes at the corresponding locations.
@@ -160,8 +243,8 @@ def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
 
             for i in range(quantity):
                 shapes.append(Shape(shape_type=shape_type, x=x, y=y))
-                print(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
-                      f"h:{shape_type.height} at ({x}, {y})")
+                logging.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
+                              f"h:{shape_type.height} at ({x}, {y})")
                 x += shape_type.width + constants.saw_kerf
 
         y_plus = (log.diameter + (h + constants.saw_kerf)) / 2 + h_n
@@ -179,89 +262,14 @@ def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
             for i in range(quantity):
                 shapes.append(Shape(shape_type=shape_type, x=x, y=y_north))
                 shapes.append(Shape(shape_type=shape_type, x=x, y=y_south + (h_n - shape_type.height)))
-                print(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
-                      f"h:{shape_type.height} at ({x}, {y_south}) and ({x}, {y_north})")
+                logging.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
+                              f"h:{shape_type.height} at ({x}, {y_south}) and ({x}, {y_north})")
                 x += shape_type.width + constants.saw_kerf
 
-        """
-        Fill out log corner positions
-        Step 1 - Locate left and right corner triangles (Mirror for north and south)
-        Step 2 - Solve LP for corner options
-        h_n : Height of north/south solution
-        h: Height of center row
-        """
+        shapes = create_corner_solution(shapes, log, shape_types, h, h_n, y_north, y_south, "NW")
+        shapes = create_corner_solution(shapes, log, shape_types, h, h_n, y_north, y_south, "NE")
 
-        candidate_shapes = [s for s in shape_types if s.height < h_n]
-        top_shapes = [s for s in shapes if s.y >= y_north]
-
-        # Step 1 - Locating Left Corner (NW corner)
-        left_most_rect = ALNS_tools.find_left_most_shape(top_shapes)
-
-        x_left, _ = log.calculate_edge_positions_on_circle(z=left_most_rect.y)
-        _, y_top = log.calculate_edge_positions_on_circle(z=left_most_rect.x)
-
-        solutions_north_west = []
-        for shape in candidate_shapes:
-            h_m = shape.height
-            w_m, x_minimal, x_maximal = ALNS_tools.find_max_rectangle_width(log=log, height=h_m,
-                                                                            x=left_most_rect.x,
-                                                                            y=left_most_rect.y,
-                                                                            orientation="NW")
-            print(f"For height {h_m}, between values {x_minimal} and {x_maximal}")
-
-            if shape.width < (w_m - constants.saw_kerf):
-                shorter_shapes = [s for s in candidate_shapes
-                                  if s.height <= h_m]
-
-                solver = pywraplp.Solver.CreateSolver('SAT')
-
-                # add decision variables
-                var_north_west = []
-                for short_shape in shorter_shapes:
-                    var_north_west.append([solver.IntVar(0, solver.infinity(), 'x' + str(short_shape.type_id)),
-                                           short_shape.width, short_shape.height, short_shape.type_id])
-
-                # add constraint for maximum length
-                solver.Add(sum([v[0] * (v[1] + constants.saw_kerf) for v in var_north_west]) <= w_m)
-                solver.Maximize(sum([v[0] * v[1] * v[2] for v in var_north_west]))
-
-                status = solver.Solve()
-
-                if status == pywraplp.Solver.OPTIMAL:
-                    north_west_values = [[v[3], v[0].solution_value()] for v in var_north_west]
-                    usage = solver.Objective().Value()
-                else:
-                    raise ValueError("Solution Not Converged")
-
-                rel_usage = usage / (h_m * w_m)
-
-                solutions_north_west.append([rel_usage,
-                                             north_west_values,
-                                             [shape.height, x_minimal, x_maximal, h_m]])
-        best_north_west_solution = max(solutions_north_west, key=lambda solution: solution[0])
-        shapes_north_west = best_north_west_solution[1]
-
-        x_minimal = best_north_west_solution[2][1]
-        x_maximal = best_north_west_solution[2][2]
-        h_m = best_north_west_solution[2][3]
-
-        print(f"h_m is {h_m}, x_min {x_minimal}, x_max {x_maximal}")
-
-        x = x_minimal
-        for shape_info in shapes_north_west:
-            shape_id = shape_info[0]
-            quantity = int(shape_info[1])
-            shape_type = shape_types[shape_id]
-
-            for i in range(quantity):
-                shapes.append(Shape(shape_type=shape_type, x=x, y=y_north))
-                shapes.append(Shape(shape_type=shape_type, x=x, y=y_south + h_m - shape_type.height))
-                print(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
-                      f"h:{shape_type.height} at ({x}, {y_south}) and ({x}, {y_north})")
-                x += shape_type.width + constants.saw_kerf
-
-                if x > x_maximal:
-                    raise ValueError(f"x exceeds maximum value for sub-rectangle. x is {x}, x_max is {x_maximal}.")
+        shapes = create_edge_solutions(shapes, log, shape_types, h, h_n)
 
         """
         Register Shapes to assigned log
@@ -270,3 +278,193 @@ def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
             if shape.log is None:
                 shape.log = log
                 log.add_shape(shape)
+
+
+def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, h_n: float,
+                           y_north: float, y_south: float, orientation: str):
+    """
+    Fill out log corner positions
+    Step 1 - Locate left and right corner triangles (Mirror for north and south)
+    Step 2 - Solve LP for corner options
+    h_n : Height of north/south solution
+    h: Height of center row
+    """
+
+    candidate_shapes = [s for s in shape_types if s.height < h_n]
+    top_shapes = [s for s in shapes if s.y >= y_north]
+
+    # Step 1 - Locating Corner
+    if orientation == "NW":
+        left_most_rect = ALNS_tools.find_left_most_shape(top_shapes)
+        rect = left_most_rect
+        x_val = rect.x - constants.saw_kerf
+    elif orientation == "NE":
+        right_most_rect = ALNS_tools.find_right_most_shape(top_shapes)
+        rect = right_most_rect
+        x_val = rect.x + rect.width + constants.saw_kerf
+    else:
+        raise NotImplementedError(f"Orientation {orientation} not implemented.")
+
+    corner = []
+    for shape in candidate_shapes:
+        h_m = shape.height
+        w_m, x_minimal, x_maximal = ALNS_tools.find_max_rectangle_width(log=log, height=h_m,
+                                                                        x=x_val,
+                                                                        y=rect.y,
+                                                                        orientation=orientation)
+
+        # Step 2 - Solve LP for corner options
+        if shape.width < (w_m - constants.saw_kerf):
+            shorter_shapes = [s for s in candidate_shapes
+                              if s.height <= h_m]
+
+            solver = pywraplp.Solver.CreateSolver('SAT')
+
+            # add decision variables
+            var_north_west = []
+            for short_shape in shorter_shapes:
+                var_north_west.append([solver.IntVar(0, solver.infinity(), 'x' + str(short_shape.type_id)),
+                                       short_shape.width, short_shape.height, short_shape.type_id])
+
+            # add constraint for maximum length
+            solver.Add(sum([v[0] * (v[1] + constants.saw_kerf) for v in var_north_west]) <= w_m)
+            solver.Maximize(sum([v[0] * v[1] * v[2] for v in var_north_west]))
+
+            status = solver.Solve()
+
+            if status == pywraplp.Solver.OPTIMAL:
+                corner_values = [[v[3], v[0].solution_value()] for v in var_north_west]
+                usage = solver.Objective().Value()
+            else:
+                raise ValueError("Solution Not Converged")
+
+            rel_usage = usage / (h_m * w_m)
+
+            corner.append([rel_usage,
+                           corner_values,
+                           [shape.height, x_minimal, x_maximal, h_m]])
+    if len(corner) > 0:
+        best_corner_solution = max(corner, key=lambda solution: solution[0])
+        shapes_corner = best_corner_solution[1]
+
+        x_minimal = best_corner_solution[2][1]
+        x_maximal = best_corner_solution[2][2]
+        h_m = best_corner_solution[2][3]
+
+        if orientation == "NW":
+            x = x_maximal + constants.saw_kerf
+        elif orientation == "NE":
+            x = x_minimal
+        else:
+            raise NotImplementedError("Orientation not found")
+
+        for shape_info in shapes_corner:
+            shape_id = shape_info[0]
+            quantity = int(shape_info[1])
+            shape_type = shape_types[shape_id]
+
+            for i in range(quantity):
+
+                if orientation == "NW":
+                    x -= shape_type.width + constants.saw_kerf
+                    shapes.append(Shape(shape_type=shape_type, x=x, y=y_north))
+                    shapes.append(Shape(shape_type=shape_type, x=x,
+                                        y=(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf))
+                    logging.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
+                                  f"h:{shape_type.height} at ({x}, {log.diameter / 2 + h / 2 - shape_type.height}) "
+                                  f"and ({x}, {y_north})")
+                    if x < x_minimal:
+                        raise ValueError(f"x exceeds minimum value for sub-rectangle. x is {x}, x_min is {x_minimal}.")
+
+                elif orientation == "NE":
+
+                    shapes.append(Shape(shape_type=shape_type, x=x, y=y_north))
+                    shapes.append(Shape(shape_type=shape_type, x=x,
+                                        y=(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf))
+                    logging.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
+                                  f"h:{shape_type.height} at ({x}, {log.diameter / 2 + h / 2 - shape_type.height}) "
+                                  f"and ({x}, {y_north})")
+                    x += shape_type.width + constants.saw_kerf
+                    if x > x_maximal:
+                        raise ValueError(f"x exceeds maximum value for sub-rectangle. x is {x}, x_max is {x_maximal}")
+    return shapes
+
+
+def create_edge_solutions(shapes: list, log: Log, shape_types: list, h: float, h_n: float, ) -> list:
+    min_y = (log.diameter + h) / 2 + h_n + 2 * constants.saw_kerf
+    max_y = log.diameter
+    max_height = max_y - min_y
+
+    candidate_shapes = [s for s in shape_types if s.height < max_height]
+
+    top = []
+
+    # If no feasible candidate shape, space can't be filled
+    if len(candidate_shapes) == 0:
+        return shapes
+
+    # Otherwise, cycle over shapes and solve LP for height h_t
+    for shape in candidate_shapes:
+        h_t = shape.height
+        shorter_shapes = [s for s in candidate_shapes if s.height <= h_t]
+
+        # Find x-coords where the height available is at least h_t
+        x_min, x_max = log.calculate_edge_positions_on_circle(log.diameter - (max_height - h_t))
+        w_t = x_max - x_min
+
+        # If the shape is wider than that maximum space, it is not a feasible candidate solution
+        if shape.width + constants.saw_kerf > w_t:
+            continue
+        else:
+
+            solver = pywraplp.Solver.CreateSolver('SAT')
+
+            var_top = []
+            for short_shape in shorter_shapes:
+                var_top.append([solver.IntVar(0, solver.infinity(), 'x' + str(short_shape.type_id)),
+                                short_shape.width, short_shape.height, short_shape.type_id])
+
+            # add constraint for maximum length
+            solver.Add(sum([v[0] * (v[1] + constants.saw_kerf) for v in var_top]) <= w_t)
+            solver.Maximize(sum([v[0] * v[1] * v[2] for v in var_top]))
+
+            status = solver.Solve()
+
+            if status == pywraplp.Solver.OPTIMAL:
+                top_values = [[v[3], v[0].solution_value()] for v in var_top]
+                usage = solver.Objective().Value()
+            else:
+                raise ValueError("Solution Not Converged")
+
+            rel_usage = usage / (h_t * w_t)
+
+            top.append([rel_usage,
+                        top_values,
+                        [shape.height, x_min, x_max, h_t]])
+
+    if len(top) > 0:
+        best_top_solution = max(top, key=lambda solution: solution[0])
+        shapes_top = best_top_solution[1]
+
+        x_minimal = best_top_solution[2][1]
+        x_maximal = best_top_solution[2][2]
+        h_m = best_top_solution[2][3]
+
+        x = x_minimal
+
+        for shape_info in shapes_top:
+            shape_id = shape_info[0]
+            quantity = int(shape_info[1])
+            shape_type = shape_types[shape_id]
+
+            for i in range(quantity):
+                shapes.append(Shape(shape_type=shape_type, x=x, y=min_y))
+                shapes.append(Shape(shape_type=shape_type, x=x,
+                                    y=(log.diameter - h) / 2 - h_n - shape_type.height - 2 * constants.saw_kerf))
+                logging.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
+                              f"h:{shape_type.height} at ({x}, "
+                              f"{(log.diameter - h) / 2 - h_n - shape_type.height - constants.saw_kerf})"
+                              f"and ({x}, {min_y})")
+                x += shape_type.width + constants.saw_kerf
+
+    return shapes
