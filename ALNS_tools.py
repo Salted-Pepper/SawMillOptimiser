@@ -105,6 +105,14 @@ def find_max_rectangle_width(log: Log, height: float, x: int, y: int, orientatio
         raise NotImplemented("SE Not yet implemented")
 
 
+def check_if_new_solution_better(log_old, log) -> bool:
+    log.update
+    if log_old.score > log.score:
+        return False
+    else:
+        return True
+
+
 def save_iteration_data(logs: list, df: pd.DataFrame, iteration: int) -> pd.DataFrame:
     """
     :param logs: List of logs

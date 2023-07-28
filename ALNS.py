@@ -25,18 +25,36 @@ def run_ALNS(logs: list, shape_types: list):
     global solution_quality_df
     iteration = 0
     temperature = 100
+    destroy_degree = 4
 
-    methods = [Method(name="TUCK"), Method(name="SWITCH"), Method(name="REPACK")]
+    repair_methods = [Method(name="RANDOM"), Method(name="SUBSPACE"), Method(name="INEFFICIENCY")]
+    destroy_methods = [Method(name="RPE"), Method(name="SER"), Method(name="BER")]
 
-    while temperature > 0:
-        update_method_probability(methods)
-        method = random.choices(methods, weights=[method.probability for method in methods])
+    logs_updated = logs
 
-        log = ALNS_tools.select_log(logs)
+    while temperature > 0 and iteration <= constants.max_iterations:
 
-        method.execute(log, shape_types)
+        update_method_probability(repair_methods)
+        update_method_probability(destroy_methods)
 
-        ALNS_tools.update_log_scores(logs)
+        log = ALNS_tools.select_log(logs_updated)
+        log_old = log
+
+        for i in range(math.floor(destroy_degree)):
+            repair_method = random.choices(repair_methods, weights=[method.probability for method in repair_methods])
+            destroy_method = random.choices(destroy_methods, weights=[method.probability for method in destroy_methods])
+
+            destroy_method.execute(log, shape_types)
+            repair_method.execute(log, shape_types)
+
+        ALNS_tools.update_log_scores(logs_updated)
+        if ALNS_tools.check_if_new_solution_better(log_old, log):
+            logs = logs_updated
+            # TODO: Update the scores for used methods and track methods used
+        else:
+            # TODO: Update the scores for used methods and track methods used
+            pass
+
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
 
         # temperature = update_temperature(temperature)
@@ -340,9 +358,6 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
     candidate_shapes = [s for s in shape_types if s.height <= h_n]
     logger.debug(f"h_n is {h_n}, h is {h} for log {log.log_id} with d {log.diameter}")
     top_shapes = [s for s in shapes if s.y >= y_north]
-
-    for s in top_shapes:
-        print(f"({s.x}, {s.y}) - w: {s.width}, h: {s.height}")
 
     # Step 1 - Locating Corner
     if orientation == "NW":

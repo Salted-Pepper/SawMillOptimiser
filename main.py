@@ -53,6 +53,8 @@ if __name__ == '__main__':
     logs.append(Log(470))
     logs.append(Log(560))
     logs.append(Log(580))
+    logs.append(Log(640))
+    logs.append(Log(390))
 
     """
     Import Shape Data
