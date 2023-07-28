@@ -68,7 +68,7 @@ def update_method_probability(methods: list, updated):
         if updated and method.used:
             method.performance = method.performance * constants.method_sensitivity_acceptance
             method.used = False
-        else:
+        elif method.used:
             method.performance = method.performance * constants.method_sensitivity_rejection
 
     for method in methods:

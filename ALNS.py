@@ -2,6 +2,7 @@ import logging
 import pandas as pd
 import random
 import datetime
+import copy
 from logs import Log
 import math
 from ALNS_methods import Method, update_method_probability
@@ -30,8 +31,7 @@ def run_ALNS(logs: list, shape_types: list):
     repair_methods = [Method(name="RANDOM"), Method(name="SUBSPACE"), Method(name="INEFFICIENCY")]
     destroy_methods = [Method(name="RPE"), Method(name="SER"), Method(name="BER")]
 
-    # TODO: Ensure logs are copies, not referring to same object in memory
-    logs_updated = logs
+    logs_updated = copy.deepcopy(logs)
 
     """
     Start ALNS Sequence, select random methods to repair and destroy based on assigned probabilities
@@ -39,17 +39,27 @@ def run_ALNS(logs: list, shape_types: list):
     while temperature > 0 and iteration <= constants.max_iterations:
 
         log = ALNS_tools.select_log(logs_updated)
-        log_old = log
+        log_old = copy.deepcopy(log)
 
-        for i in range(math.floor(destroy_degree)):
-            repair_method = random.choices(repair_methods, weights=[method.probability for method in repair_methods])
-            destroy_method = random.choices(destroy_methods, weights=[method.probability for method in destroy_methods])
+        # Only run repair methods for the first couple of iterations to fill up empty space in initial solution
+        if iteration < constants.fill_up_iterations:
+            for i in range(math.floor(destroy_degree)):
+                repair_method = random.choices(repair_methods,
+                                               weights=[method.probability for method in repair_methods])
+                repair_method.used()
+                repair_method.execute(log, shape_types)
+        else:
+            for i in range(math.floor(destroy_degree)):
+                repair_method = random.choices(repair_methods,
+                                               weights=[method.probability for method in repair_methods])
+                destroy_method = random.choices(destroy_methods,
+                                                weights=[method.probability for method in destroy_methods])
 
-            repair_method.used()
-            destroy_method.used()
+                repair_method.used()
+                destroy_method.used()
 
-            destroy_method.execute(log, shape_types)
-            repair_method.execute(log, shape_types)
+                destroy_method.execute(log, shape_types)
+                repair_method.execute(log, shape_types)
 
         ALNS_tools.update_log_scores(logs_updated)
         accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log_old, log, temperature)
@@ -61,6 +71,7 @@ def run_ALNS(logs: list, shape_types: list):
             logs = logs_updated
         else:
             pass
+        # TODO: Save image of the iteration
 
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
         temperature = ALNS_tools.update_temperature(temperature, accept_new_solution, delta, score)
