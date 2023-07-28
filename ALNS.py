@@ -4,7 +4,7 @@ import random
 import datetime
 from logs import Log
 import math
-from ALNS_methods import Method
+from ALNS_methods import Method, update_method_probability
 from ortools.linear_solver import pywraplp
 
 import ALNS_tools
@@ -24,7 +24,7 @@ solution_quality_df = pd.DataFrame(columns=["iteration", "log", "score", "saw_du
 def run_ALNS(logs: list, shape_types: list):
     global solution_quality_df
     iteration = 0
-    temperature = 100
+    temperature = constants.starting_temperature
     destroy_degree = 4
 
     repair_methods = [Method(name="RANDOM"), Method(name="SUBSPACE"), Method(name="INEFFICIENCY")]
@@ -48,32 +48,19 @@ def run_ALNS(logs: list, shape_types: list):
             repair_method.execute(log, shape_types)
 
         ALNS_tools.update_log_scores(logs_updated)
-        if ALNS_tools.check_if_new_solution_better(log_old, log):
+        updated, delta, score = ALNS_tools.check_if_new_solution_better(log_old, log, temperature)
+        if updated:
             logs = logs_updated
             # TODO: Update the scores for used methods and track methods used
+
+            updated = True
         else:
             # TODO: Update the scores for used methods and track methods used
-            pass
+            updated = False
 
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
 
-        # temperature = update_temperature(temperature)
-
-
-def update_method_probability(methods: list):
-    total_performance = sum([method.performance for method in methods])
-    for method in methods:
-        method.probability = method.total_performance / total_performance
-
-
-def update_temperature(temperature: float, solution_accepted: bool, delta: float) -> float:
-    accept_ratio = 0.5
-    decline_ratio = 1
-    if solution_accepted:
-        temperature = temperature - (math.sqrt(delta) * accept_ratio)
-    else:
-        temperature -= decline_ratio
-    return temperature
+        temperature = ALNS_tools.update_temperature(temperature, updated, delta, score)
 
 
 def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max: float,

@@ -4,6 +4,7 @@ import pandas as pd
 import random
 import datetime
 
+import constants
 from shapes import Shape
 from logs import Log
 
@@ -105,12 +106,22 @@ def find_max_rectangle_width(log: Log, height: float, x: int, y: int, orientatio
         raise NotImplemented("SE Not yet implemented")
 
 
-def check_if_new_solution_better(log_old, log) -> bool:
-    log.update
-    if log_old.score > log.score:
-        return False
+def check_if_new_solution_better(log_old: Log, log: Log, temperature: float) -> tuple:
+    log_old_score = calculate_log_score(log_old)
+    log_score = calculate_log_score(log)
+    # TODO: Probability based acceptance using temperature
+    if log_old_score > log_score:
+        return False, 0, log_old_score
     else:
-        return True
+        return True, log_score - log_old_score, log_score
+
+
+def update_temperature(temperature: float, updated: bool, delta: float, score: float) -> float:
+    if updated:
+        temperature = temperature * (delta / score)**(1/10)
+    else:
+        temperature = temperature * constants.temperature_sensitivity
+    return temperature
 
 
 def save_iteration_data(logs: list, df: pd.DataFrame, iteration: int) -> pd.DataFrame:
