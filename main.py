@@ -50,6 +50,9 @@ if __name__ == '__main__':
     logs.append(Log(500))
     logs.append(Log(350))
     logs.append(Log(460))
+    logs.append(Log(470))
+    logs.append(Log(560))
+    logs.append(Log(580))
 
     """
     Import Shape Data
@@ -97,4 +100,3 @@ if __name__ == '__main__':
         log.show_plot()
 
     check_feasibility(list_of_logs=logs)
-

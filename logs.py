@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 
 log_id = 0
 
-
 class Log:
     def __init__(self, diameter: float) -> None:
         global log_id

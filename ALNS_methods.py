@@ -12,23 +12,23 @@ class Method:
     def reject_method(self):
         self.performance = self.performance * self.adjust_rate
 
-    def execute(self, log):
+    def execute(self, log, shape_types):
 
         if self.name == "TUCK":
-            tuck(log)
+            tuck(log, shape_types)
         elif self.name == "SWITCH":
-            switch(log)
+            switch(log, shape_types)
         elif self.name == "REPACK":
-            repack(log)
+            repack(log, shape_types)
 
 
-def tuck(log: Log):
+def tuck(log: Log, shape_types: list):
     pass
 
 
-def switch(log: Log):
+def switch(log: Log, shape_types: list):
     pass
 
 
-def repack(log: Log):
+def repack(log: Log, shape_types: list):
     pass

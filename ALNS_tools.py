@@ -1,10 +1,17 @@
+import logging
 import math
-
 import pandas as pd
 import random
+import datetime
 
 from shapes import Shape
 from logs import Log
+
+date = datetime.date.today()
+logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%d-%b-%y %H:%M:%S")
+logger = logging.getLogger("ALNS_Tools Logger")
+logger.setLevel(logging.DEBUG)
 
 
 def update_log_scores(logs: list) -> None:
@@ -60,9 +67,9 @@ def find_right_most_shape(shapes: list) -> Shape:
     maximal_shape = None
 
     for shape in shapes:
-        if shape.x > left:
+        if shape.x + shape.width > left:
             maximal_shape = shape
-            left = shape.x
+            left = shape.x + shape.width
 
     return maximal_shape
 
@@ -76,8 +83,15 @@ def find_max_rectangle_width(log: Log, height: float, x: int, y: int, orientatio
     :param orientation: direction of the rectangle - either "NW", "NE", "SW", "SE"
     :return: float with max width
     """
+    logger.debug(f"Find max width rectangle for log {log.log_id}, with coords ({x}, {y}), with height {height}"
+                  f" and orientation {orientation}")
 
     r = log.diameter / 2
+
+    # No feasible point
+    if y + height > log.diameter:
+        logger.warning("Tried creating LP for point exceeding log diameter - violates math domain")
+        return 0, -1, -1
 
     if orientation == "NW":
         x_m = r - math.sqrt(r ** 2 - (height + y - r) ** 2)
