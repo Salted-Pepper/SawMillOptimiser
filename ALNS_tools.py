@@ -75,7 +75,7 @@ def find_right_most_shape(shapes: list) -> Shape:
     return maximal_shape
 
 
-def find_max_rectangle_width(log: Log, height: float, x: int, y: int, orientation: str) -> tuple:
+def find_max_rectangle_width(log: Log, height: float, x: float, y: float, orientation: str) -> tuple:
     """
     :param log: Log Object
     :param height: Height of rectangle
@@ -85,7 +85,7 @@ def find_max_rectangle_width(log: Log, height: float, x: int, y: int, orientatio
     :return: float with max width
     """
     logger.debug(f"Find max width rectangle for log {log.log_id}, with coords ({x}, {y}), with height {height}"
-                  f" and orientation {orientation}")
+                 f" and orientation {orientation}")
 
     r = log.diameter / 2
 
@@ -118,7 +118,7 @@ def check_if_new_solution_better(log_old: Log, log: Log, temperature: float) -> 
 
 def update_temperature(temperature: float, updated: bool, delta: float, score: float) -> float:
     if updated:
-        temperature = temperature * (delta / score)**(1/10)
+        temperature = temperature * (delta / score) ** (1 / 10)
     else:
         temperature = temperature * constants.temperature_sensitivity
     return temperature

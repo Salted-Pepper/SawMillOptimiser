@@ -30,12 +30,13 @@ def run_ALNS(logs: list, shape_types: list):
     repair_methods = [Method(name="RANDOM"), Method(name="SUBSPACE"), Method(name="INEFFICIENCY")]
     destroy_methods = [Method(name="RPE"), Method(name="SER"), Method(name="BER")]
 
+    # TODO: Ensure logs are copies, not referring to same object in memory
     logs_updated = logs
 
+    """
+    Start ALNS Sequence, select random methods to repair and destroy based on assigned probabilities
+    """
     while temperature > 0 and iteration <= constants.max_iterations:
-
-        update_method_probability(repair_methods)
-        update_method_probability(destroy_methods)
 
         log = ALNS_tools.select_log(logs_updated)
         log_old = log
@@ -44,23 +45,30 @@ def run_ALNS(logs: list, shape_types: list):
             repair_method = random.choices(repair_methods, weights=[method.probability for method in repair_methods])
             destroy_method = random.choices(destroy_methods, weights=[method.probability for method in destroy_methods])
 
+            repair_method.used()
+            destroy_method.used()
+
             destroy_method.execute(log, shape_types)
             repair_method.execute(log, shape_types)
 
         ALNS_tools.update_log_scores(logs_updated)
-        updated, delta, score = ALNS_tools.check_if_new_solution_better(log_old, log, temperature)
-        if updated:
-            logs = logs_updated
-            # TODO: Update the scores for used methods and track methods used
+        accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log_old, log, temperature)
 
-            updated = True
+        """
+        Single Iteration completed, process changes and update parameter values
+        """
+        if accept_new_solution:
+            logs = logs_updated
         else:
-            # TODO: Update the scores for used methods and track methods used
-            updated = False
+            pass
 
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
+        temperature = ALNS_tools.update_temperature(temperature, accept_new_solution, delta, score)
+        update_method_probability(repair_methods, accept_new_solution)
+        update_method_probability(destroy_methods, accept_new_solution)
+        iteration += 1
 
-        temperature = ALNS_tools.update_temperature(temperature, updated, delta, score)
+        # TODO: Update destroy degree based on temperature
 
 
 def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max: float,

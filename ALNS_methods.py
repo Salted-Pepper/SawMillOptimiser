@@ -1,3 +1,4 @@
+import constants
 from logs import Log
 
 
@@ -32,6 +33,8 @@ class Method:
         self.name = name
         self.performance = 100
         self.probability = 1
+        self.method_used = False
+        self.times_used = 0
 
     def reject_method(self):
         self.performance = self.performance * self.adjust_rate
@@ -53,7 +56,21 @@ class Method:
         else:
             raise ValueError(f"ALNS Method {self.name} Not Implemented")
 
-def update_method_probability(methods: list):
+    def used(self):
+        self.method_used = True
+        self.times_used += 1
+
+
+def update_method_probability(methods: list, updated):
     total_performance = sum([method.performance for method in methods])
+
     for method in methods:
-        method.probability = method.total_performance / total_performance
+        if updated and method.used:
+            method.performance = method.performance * constants.method_sensitivity_acceptance
+            method.used = False
+        else:
+            method.performance = method.performance * constants.method_sensitivity_rejection
+
+    for method in methods:
+        method.probability = method.performance / total_performance
+
