@@ -88,7 +88,7 @@ if __name__ == '__main__':
     """
     # TODO: Define how shapes are created/distributed
 
-    ALNS.greedy_place(shapes=shapes,
+    ALNS.greedy_place(all_shapes=shapes,
                       logs=logs,
                       shape_types=shape_types)
 

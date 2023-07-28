@@ -135,9 +135,9 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
     return shapes
 
 
-def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
+def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
     """
-    :param shapes: List of Shapes
+    :param all_shapes: List of all Shapes
     :param shape_types: List of Shape Types (Available sizes)
     :param logs: List of Logs
     :return:
@@ -150,6 +150,7 @@ def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
         """
         solutions = []
         logger.debug(f"Optimising for log with diameter {log.diameter}")
+        shapes = []
 
         for shape in shape_types:
 
@@ -322,6 +323,8 @@ def greedy_place(shapes: list, shape_types: list, logs: list) -> None:
             if shape.log is None:
                 shape.log = log
                 log.add_shape(shape)
+
+        all_shapes.extend(shapes)
 
 
 def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, h_n: float,
