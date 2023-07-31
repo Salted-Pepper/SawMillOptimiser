@@ -1,8 +1,11 @@
 import logging
 import math
 import pandas as pd
+import numpy as np
 import random
 import datetime
+
+from ortools.linear_solver import pywraplp
 
 import constants
 from shapes import Shape
@@ -194,14 +197,166 @@ def find_orientation_from_points(centre: float, x: float, y: float) -> str:
     if x >= centre and y >= centre:
         orientation = "NE"
     elif x < centre and y >= centre:
-        orientation = "SE"
+        orientation = "NW"
     elif x < centre and y < centre:
         orientation = "SW"
     elif x >= centre and y < centre:
-        orientation = "NW"
+        orientation = "SE"
     else:
         raise ValueError(f"No Orientation defined for ({x}, {y})")
     return orientation
+
+
+def check_if_rectangle_empty(x_0: float, x_1: float, y_0: float, y_1: float, log: Log):
+    """
+    This function checks if there is any shape within a given rectangle in a particular log.
+    It does so by checking every delta x and delta y, where these delta values are defined
+    by the smallest possible width and height of a figure, ensuring that there is no figure fitting in
+    these points.
+
+    :param x_0: Smallest x coordinate
+    :param x_1: Largest x coordinate
+    :param y_0: Smallest y coordinate
+    :param y_1: Largest x coordinate
+    :param log: Log containing shapes
+    :return:
+    """
+
+    min_width_check = constants.min_width_shape_type.width
+    min_height_check = constants.min_height_shape_type.height
+
+    width_steps = np.floor((x_1 - x_0) / min_width_check)
+    height_steps = np.floor((y_1 - y_0) / min_height_check)
+
+    violating_shapes = []
+    for i in range(width_steps):
+        for j in range(height_steps):
+            for shape in log.shapes:
+                if shape.check_if_point_in_shape(x_0 + i * min_width_check, y_0 + j * min_height_check):
+                    violating_shapes.append(shape)
+    if len(violating_shapes) > 0:
+        return True, violating_shapes
+    else:
+        return False, violating_shapes
+
+
+def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max: float,
+                                candidate_shapes: list, shape_types: list, shapes: list) -> list:
+    """
+    This function applies an LP solver to a given space, optimising the space for the given candidate shapes.
+    The given space, described by (x,y)-values, includes the saw kerf on the sides.
+    It returns a new set of shapes that can be added in the described location.
+
+    :param x_min: Left side x-value
+    :param x_max: Right side x-value
+    :param y_min: Bottom side y-value
+    :param y_max: Top side y-value
+    :param candidate_shapes: List of shapes to fill the given space
+    :param shape_types: List of all available shapes
+    :param shapes: List of shapes currently in the considered log, or an empty list to add to
+    :return shapes: List of added shapes
+    """
+    solutions = []
+
+    width = x_max - x_min - 2 * constants.saw_kerf
+    height = y_max - y_min - 2 * constants.saw_kerf
+
+    # Horizontal Solutions
+    candidate_shapes = [s for s in candidate_shapes if s.width <= width]
+    for shape in candidate_shapes:
+        h_m = shape.height
+        shorter_shapes = [s for s in candidate_shapes if s.height <= h_m]
+
+        solver = pywraplp.Solver.CreateSolver('SAT')
+
+        variables = []
+
+        for short_shape in shorter_shapes:
+            variables.append([solver.IntVar(0, solver.infinity(), 'x' + str(short_shape.type_id)),
+                              short_shape.width, short_shape.height, short_shape.type_id])
+
+            # add constraint for maximum length
+            solver.Add(sum([v[0] * (v[1] + constants.saw_kerf) for v in variables]) <= width)
+            solver.Maximize(sum([v[0] * v[1] * v[2] for v in variables]))
+
+        status = solver.Solve()
+
+        if status == pywraplp.Solver.OPTIMAL:
+            values = [[v[3], v[0].solution_value()] for v in variables]
+            usage = solver.Objective().Value()
+        else:
+            raise ValueError("Solution Not Converged")
+
+        rel_usage = usage / (height * width)
+
+        solutions.append([rel_usage,
+                          values,
+                          [h_m, x_min, x_max, height],
+                          "Horizontal"])
+
+    # Vertical Solutions
+    candidate_shapes = [s for s in candidate_shapes if s.height <= height]
+    for shape in candidate_shapes:
+        w_m = shape.width
+        shorter_shapes = [s for s in candidate_shapes if s.width <= w_m]
+
+        solver = pywraplp.Solver.CreateSolver('SAT')
+
+        variables = []
+
+        for short_shape in shorter_shapes:
+            variables.append([solver.IntVar(0, solver.infinity(), 'x' + str(short_shape.type_id)),
+                              short_shape.width, short_shape.height, short_shape.type_id])
+
+            # add constraint for maximum length
+            solver.Add(sum([v[0] * (v[2] + constants.saw_kerf) for v in variables]) <= height)
+            solver.Maximize(sum([v[0] * v[1] * v[2] for v in variables]))
+
+        status = solver.Solve()
+
+        if status == pywraplp.Solver.OPTIMAL:
+            values = [[v[3], v[0].solution_value()] for v in variables]
+            usage = solver.Objective().Value()
+        else:
+            raise ValueError("Solution Not Converged")
+
+        rel_usage = usage / (height * width)
+
+        solutions.append([rel_usage,
+                          values,
+                          [w_m, x_min, x_max, width],
+                          "Vertical"])
+
+    best_solution = max(solutions, key=lambda solution: solution[0])
+    shapes_top = best_solution[1]
+    z_minimal = best_solution[2][1]
+    z_maximal = best_solution[2][2]
+    orientation = best_solution[3]
+
+    z = z_minimal + constants.saw_kerf
+
+    # Create a list of shapes with locations corresponding to solution
+    for shape_info in shapes_top:
+        shape_id = shape_info[0]
+        quantity = int(shape_info[1])
+        shape_type = shape_types[shape_id]
+
+        if orientation == "Horizontal":
+            for i in range(quantity):
+                shapes.append(Shape(shape_type=shape_type, x=z, y=y_min))
+                logger.debug(f"Added shape {shape_type.type_id}, at location {z, y_min}")
+                z += shape_type.width + constants.saw_kerf
+                if z > z_maximal:
+                    raise ValueError(f"Exceeding maximum x-value {z} > {z_maximal}.")
+        elif orientation == "Vertical":
+            for i in range(quantity):
+                shapes.append(Shape(shape_type=shape_type, x=x_min, y=z))
+                logger.debug(f"Added shape {shape_type.type_id}, at location {z, y_min}")
+                z += shape_type.height + constants.saw_kerf
+                if z > z_maximal:
+                    raise ValueError(f"Exceeding maximum x-value {z} > {z_maximal}.")
+
+    return shapes
 
 
 def plot_iteration_data():

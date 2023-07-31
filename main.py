@@ -76,12 +76,13 @@ if __name__ == '__main__':
     transposed_shapes = []
 
     for shape in shape_types:
-        transposed_shapes.append(ShapeType(width=shape.height,
-                                           height=shape.width,
-                                           ratio=shape.width / shape.height,
-                                           demand=shape.demand,
-                                           colour=shape.colour,
-                                           duplicate_id=shape.type_id))
+        if shape.width != shape.height:
+            transposed_shapes.append(ShapeType(width=shape.height,
+                                               height=shape.width,
+                                               ratio=shape.width / shape.height,
+                                               demand=shape.demand,
+                                               colour=shape.colour,
+                                               duplicate_id=shape.type_id))
 
     shape_types.extend(transposed_shapes)
 

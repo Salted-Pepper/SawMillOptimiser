@@ -107,6 +107,15 @@ class Log:
         else:
             return False
 
+    def find_closest_point_on_edge(self, x: float, y: float) -> tuple:
+        r = self.diameter / 2
+        v_x = x - r
+        v_y = y - r
+        mag_v = math.sqrt(v_x ** 2 + v_y ** 2)
+        x_edge = r + v_x / mag_v * r
+        y_edge = r + v_y / mag_v * r
+        return x_edge, y_edge
+
 
 def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
     sk = constants.saw_kerf
