@@ -26,7 +26,7 @@ solution_quality_df = pd.DataFrame(columns=["iteration", "log", "score", "saw_du
 
 def run_ALNS(logs: list, shape_types: list):
     global solution_quality_df
-    iteration = 0
+    iteration = 1
     temperature = constants.starting_temperature
     destroy_degree = 4
 
@@ -36,20 +36,19 @@ def run_ALNS(logs: list, shape_types: list):
 
     ALNS_tools.calculate_smallest_shape_types(shape_types)
 
-    repair_methods = [Method(name="RANDOM"), Method(name="SUBSPACE"), Method(name="INEFFICIENCY")]
-    destroy_methods = [Method(name="RPE"), Method(name="SER"), Method(name="BER")]
+    destroy_methods = [Method(name="RANDOM"), Method(name="SUBSPACE"), Method(name="INEFFICIENCY")]
+    repair_methods = [Method(name="RPE"), Method(name="SER"), Method(name="BER")]
     tuck_method = Method(name="TUCK")
-
-    logs_updated = copy.deepcopy(logs)
 
     """
     Start ALNS Sequence, select random methods to repair and destroy based on assigned probabilities
     """
     while temperature > 0 and iteration <= constants.max_iterations:
         logger.debug(f"Going into iteration {iteration} with temperature {temperature}...")
-        log = ALNS_tools.select_log(logs_updated)
+        log = ALNS_tools.select_log(logs)
         logger.debug(f"Select log {log.log_id}.")
-        log_old = copy.deepcopy(log)
+        # TODO: Invoke copy here
+        log_new = log
 
         # Only run repair methods for the first couple of iterations to fill up empty space in initial solution
         if iteration < constants.fill_up_iterations:
@@ -58,7 +57,7 @@ def run_ALNS(logs: list, shape_types: list):
                                                weights=[method.probability for method in repair_methods],
                                                k=1)[0]
                 repair_method.used()
-                repair_method.execute(log, shape_types)
+                repair_method.execute(log_new, shape_types)
         else:
             for i in range(math.floor(destroy_degree)):
                 repair_method = random.choices(repair_methods,
@@ -71,17 +70,17 @@ def run_ALNS(logs: list, shape_types: list):
                 repair_method.used()
                 destroy_method.used()
 
-                destroy_method.execute(log, shape_types)
-                repair_method.execute(log, shape_types)
+                destroy_method.execute(log_new, shape_types)
+                repair_method.execute(log_new, shape_types)
 
-        ALNS_tools.update_log_scores(logs_updated)
-        accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log_old, log, temperature)
+        ALNS_tools.update_log_scores([log_new])
+        accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log_new, log, temperature)
 
         """
         Single Iteration completed, process changes and update parameter values
         """
         if accept_new_solution:
-            logs = logs_updated
+            log = log_new
         else:
             pass
         # TODO: Save image of the iteration
@@ -95,6 +94,8 @@ def run_ALNS(logs: list, shape_types: list):
         iteration += 1
 
         # TODO: Update destroy degree based on temperature
+
+    return solution_quality_df
 
 
 def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:

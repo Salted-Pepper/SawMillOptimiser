@@ -1,8 +1,5 @@
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-
 from logs import Log
-from shapes import Shape, ShapeType, sort_shapes_on_size
+from shapes import Shape, ShapeType
 import ALNS
 
 import pandas as pd
@@ -11,14 +8,6 @@ import pandas as pd
 default measurement: millimeters
 default dimensionality: width x height
 """
-
-
-def plot_circle(fig, ax, diam, ) -> plt.figure:
-    circle = plt.Circle((diam * 1.05 / 2, diam * 1.05 / 2), diam / 2, color='saddlebrown', fill=False)
-    ax.add_patch(circle)
-    ax.set_xlim(0, 1.1*diam)
-    ax.set_ylim(0, 1.1*diam)
-    return fig, ax
 
 
 def check_if_logs_feasible(list_of_logs) -> bool:
@@ -38,7 +27,6 @@ def check_feasibility(list_of_logs):
 
 
 if __name__ == '__main__':
-    diameter = 450
 
     logs = []
     shapes = []
@@ -46,15 +34,15 @@ if __name__ == '__main__':
     """
     Create Logs
     """
-    logs.append(Log(450))
-    logs.append(Log(500))
-    logs.append(Log(350))
-    logs.append(Log(460))
-    logs.append(Log(470))
-    logs.append(Log(560))
+    # logs.append(Log(450))
+    # logs.append(Log(500))
+    # logs.append(Log(350))
+    # logs.append(Log(460))
+    # logs.append(Log(470))
+    # logs.append(Log(560))
     logs.append(Log(580))
-    logs.append(Log(640))
-    logs.append(Log(390))
+    # logs.append(Log(640))
+    # logs.append(Log(390))
 
     """
     Import Shape Data
@@ -94,10 +82,11 @@ if __name__ == '__main__':
                       logs=logs,
                       shape_types=shape_types)
 
-    ALNS.run_ALNS(logs=logs, shape_types=shape_types)
+    for log in logs:
+        log.update_plot_title()
+        log.show_plot()
 
-    for shape in shapes:
-        shape.add_rect_to_plot()
+    solution_quality_df = ALNS.run_ALNS(logs=logs, shape_types=shape_types)
 
     for log in logs:
         log.update_plot_title()

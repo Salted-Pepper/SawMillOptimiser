@@ -79,7 +79,7 @@ class Shape:
         self.width = self.height
         self.height = width
 
-    def add_rect_to_plot(self) -> plt.figure:
+    def add_rect_to_plot(self):
 
         if self.log is None:
             print("Piece not attributed to log, not able to show figure")
@@ -91,9 +91,6 @@ class Shape:
         if self.y is None:
             print("Y coordinate not set.")
             return
-
-        fig = self.log.fig
-        ax = self.log.ax
 
         if self.colour is not None:
             self.rect = mpatches.Rectangle((self.x, self.y),
@@ -109,15 +106,13 @@ class Shape:
                                             self.width + 2 * constants.saw_kerf,
                                             self.height + 2 * constants.saw_kerf,
                                             color="black")
-        ax.add_patch(self.rect_kerf)
-        ax.add_patch(self.rect)
+        self.log.ax.add_patch(self.rect_kerf)
+        self.log.ax.add_patch(self.rect)
 
-        ax.text(self.x + constants.rect_text_margin * self.width,
-                self.y + constants.rect_text_margin * self.height,
-                f"{self.width}x{self.height}",
-                color="white")
-
-        return fig, ax
+        self.log.ax.text(self.x + constants.rect_text_margin * self.width,
+                         self.y + constants.rect_text_margin * self.height,
+                         f"{self.width}x{self.height}",
+                         color="white")
 
     def get_volume(self) -> float:
         return self.width * self.height
@@ -142,7 +137,8 @@ class Shape:
             self.rect_kerf = None
 
     def check_if_point_in_shape(self, x: float, y: float):
-        if self.x <= x <= self.x + self.width and self.y <= y <= self.y + self.height:
+        if (self.x - constants.saw_kerf <= x <= self.x + self.width + constants.saw_kerf
+                and self.y - constants.saw_kerf <= y <= self.y + self.height + constants.saw_kerf):
             return True
         else:
             return False
@@ -191,4 +187,3 @@ def sort_shapes_on_size(shapes):
                 continue
     sorted_list.reverse()
     return sorted_list
-

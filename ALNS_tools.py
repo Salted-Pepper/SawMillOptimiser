@@ -224,8 +224,8 @@ def check_if_rectangle_empty(x_0: float, x_1: float, y_0: float, y_1: float, log
     min_width_check = constants.min_width_shape_type.width
     min_height_check = constants.min_height_shape_type.height
 
-    width_steps = np.floor((x_1 - x_0) / min_width_check)
-    height_steps = np.floor((y_1 - y_0) / min_height_check)
+    width_steps = int(np.floor((x_1 - x_0) / min_width_check))
+    height_steps = int(np.floor((y_1 - y_0) / min_height_check))
 
     violating_shapes = []
     for i in range(width_steps):
@@ -240,7 +240,7 @@ def check_if_rectangle_empty(x_0: float, x_1: float, y_0: float, y_1: float, log
 
 
 def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max: float,
-                                candidate_shapes: list, shape_types: list, shapes: list) -> list:
+                                candidate_shapes: list, shape_types: list, shapes: list) -> tuple:
     """
     This function applies an LP solver to a given space, optimising the space for the given candidate shapes.
     The given space, described by (x,y)-values, includes the saw kerf on the sides.
@@ -326,6 +326,10 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
                           [w_m, x_min, x_max, width],
                           "Vertical"])
 
+    if len(solutions) == 0:
+        logging.warning(f"No Solution Found Using ALNS_tools LP Solver in ({x_min}, {y_min}), ({x_max}, {y_max})")
+        return [], 0
+
     best_solution = max(solutions, key=lambda solution: solution[0])
     shapes_top = best_solution[1]
     z_minimal = best_solution[2][1]
@@ -355,7 +359,40 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
                 if z > z_maximal:
                     raise ValueError(f"Exceeding maximum x-value {z} > {z_maximal}.")
 
-    return shapes
+    return shapes, rel_usage
+
+
+def fit_points_in_boundaries(left_x, right_x, low_y, high_y, priority: str, log: Log):
+    if priority == "width":
+        x_left_boundary_low, x_right_boundary_low = log.calculate_edge_positions_on_circle(low_y)
+        x_left_boundary_high, x_right_boundary_high = log.calculate_edge_positions_on_circle(high_y)
+        logger.debug(f"Picking max of: {left_x}, {x_left_boundary_low}, {x_left_boundary_high}")
+        logger.debug(f"Picking min of: {right_x}, {x_right_boundary_low}, {x_right_boundary_high}")
+        left_x = max(left_x, x_left_boundary_low, x_left_boundary_high)
+        right_x = min(right_x, x_right_boundary_low, x_right_boundary_high)
+
+        y_bot_boundary_left, y_top_boundary_left = log.calculate_edge_positions_on_circle(left_x)
+        y_bot_boundary_right, y_top_boundary_right = log.calculate_edge_positions_on_circle(right_x)
+        logger.debug(f"Picking max of: {low_y}, {y_bot_boundary_left}, {y_bot_boundary_right}")
+        logger.debug(f"Picking min of: {high_y}, {y_top_boundary_left}, {y_top_boundary_right}")
+        low_y = max(low_y, y_bot_boundary_left, y_bot_boundary_right)
+        high_y = min(high_y, y_top_boundary_left, y_top_boundary_right)
+
+    elif priority == "height":
+        y_bot_boundary_left, y_top_boundary_left = log.calculate_edge_positions_on_circle(left_x)
+        y_bot_boundary_right, y_top_boundary_right = log.calculate_edge_positions_on_circle(right_x)
+        logger.debug(f"Picking max of: {low_y}, {y_bot_boundary_left}, {y_bot_boundary_right}")
+        logger.debug(f"Picking min of: {high_y}, {y_top_boundary_left}, {y_top_boundary_right}")
+        low_y = max(low_y, y_bot_boundary_left, y_bot_boundary_right)
+        high_y = min(high_y, y_top_boundary_left, y_top_boundary_right)
+
+        x_left_boundary_low, x_right_boundary_low = log.calculate_edge_positions_on_circle(low_y)
+        x_left_boundary_high, x_right_boundary_high = log.calculate_edge_positions_on_circle(high_y)
+        logger.debug(f"Picking max of: {left_x}, {x_left_boundary_low}, {x_left_boundary_high}")
+        logger.debug(f"Picking min of: {right_x}, {x_right_boundary_low}, {x_right_boundary_high}")
+        left_x = max(left_x, x_left_boundary_low, x_left_boundary_high)
+        right_x = min(right_x, x_right_boundary_low, x_right_boundary_high)
+    return left_x, right_x, low_y, high_y
 
 
 def plot_iteration_data():

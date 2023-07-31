@@ -1,6 +1,7 @@
 import constants
 from shapes import Shape
 
+import datetime
 import math
 import matplotlib.pyplot as plt
 
@@ -56,6 +57,8 @@ class Log:
 
     def show_plot(self) -> None:
         self.update_plot_title()
+        date = datetime.datetime.now()
+        self.fig.savefig(f"plots/log_{self.log_id}_{date.strftime('%d_%m_%Y_%H_%M_%S')}.png")
         self.fig.show()
 
     def calculate_edge_positions_on_circle(self, z: float) -> tuple:
@@ -85,6 +88,7 @@ class Log:
         self.shapes.append(shape)
         self.volume_used += shape.get_volume()
         self.calculate_efficiency()
+        shape.add_rect_to_plot()
 
     def calculate_sawdust_created(self) -> float:
         # TODO: Create function to calculate sawdust (circumference - shared circumference)

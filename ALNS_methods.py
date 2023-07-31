@@ -30,6 +30,8 @@ def inefficiency_destroy(log, shape_types):
 
 
 def random_point_expansion(log, shape_types) -> None:
+    # TODO: fix coords calculations - not consistent - Use ratios instead?
+
     """
     RPE selects a random point in the log, it then calculates the maximum rectangle it can create until there
     is a collision in every direction. It then checks if this area is empty of shapes. If so, it applies an LP to
@@ -43,19 +45,19 @@ def random_point_expansion(log, shape_types) -> None:
     found_point = False
 
     while not found_point:
-        x, y = np.random.uniform(low=0, high=log.diameter, size=2)
+        p_x, p_y = np.random.uniform(low=0, high=log.diameter, size=2)
 
-        if log.check_if_point_in_log(x, y):
+        if log.check_if_point_in_log(p_x, p_y):
             point_in_shape = False
             for shape in log.shapes:
-                if shape.check_if_point_in_shape(x, y):
+                if shape.check_if_point_in_shape(p_x, p_y):
                     point_in_shape = True
-                    continue
 
             if not point_in_shape:
                 found_point = True
-    logger.debug(f"Attempting Random Point Expansion in Log {log.log_id} at ({x}, {y})")
-    orientation = ALNS_tools.find_orientation_from_points(centre=log.diameter / 2, x=x, y=y)
+
+    logger.debug(f"Attempting Random Point Expansion in Log {log.log_id} at ({p_x}, {p_y})")
+    orientation = ALNS_tools.find_orientation_from_points(centre=log.diameter / 2, x=p_x, y=p_y)
 
     """
     Feasible point has been found, attempt to expand towards the center point, and find first collision
@@ -63,113 +65,72 @@ def random_point_expansion(log, shape_types) -> None:
     Hence, we initially check the point the minimum distance away. 
     If it is not occupied, we expand again with the same width.
     If the tile is occupied, we find the shape the point is contained in, and go to the edge of that shape
-
-    x_edge: X coord of point closest log edge
-    y_edge: Y coord of point closest log edge
-    
-    x_centre:  X Coordinate closest in direction of centre before collision
-    y_centre:  Y Coordinate closest in direction of centre before collision
     """
 
-    x_edge, y_edge = log.find_closest_point_on_edge(x, y)
+    left_most_x, right_most_x = log.calculate_edge_positions_on_circle(p_y)
+    lowest_y, highest_y = log.calculate_edge_positions_on_circle(p_x)
 
-    if orientation.startswith("N"):
-        y_centre, _ = log.calculate_edge_positions_on_circle(x)
-    else:
-        _, y_centre = log.calculate_edge_positions_on_circle(x)
+    logger.debug(f"Initialized x_l {left_most_x}, x_r {right_most_x}, y_min {lowest_y}, y_max {highest_y}.")
 
-    if orientation.endswith("E"):
-        x_centre, _ = log.calculate_edge_positions_on_circle(y)
-    else:
-        _, x_centre = log.calculate_edge_positions_on_circle(y)
-
-    # find first collision based on just looking at x and y coordinates
     for shape in log.shapes:
-        if shape.y <= y <= shape.y + shape.height:
-            if shape.x + shape.width > x_centre and (orientation == "NE" or orientation == "SE"):
-                x_centre = shape.x + shape.width
-            elif shape.x < x_centre and (orientation == "NW" or orientation == "SW"):
-                x_centre = shape.x
+        # see if shape is in same p_x dimension
+        if shape.x - constants.saw_kerf <= p_x <= shape.x + shape.width + constants.saw_kerf:
+            # Then a y-collision is possible
+            if p_y > shape.y + shape.height + constants.saw_kerf > lowest_y:
+                lowest_y = shape.y + shape.height + constants.saw_kerf
 
-        if shape.x <= x <= shape.x + shape.width:
-            if shape.y > y_centre and (orientation == "NE" or orientation == "NW"):
-                y_centre = shape.y
-            elif shape.y + shape.height < y_centre and (orientation == "SE" or orientation == "SW"):
-                y_centre = shape.y + shape.height
+            if p_y < shape.y - constants.saw_kerf < highest_y:
+                highest_y = shape.y - constants.saw_kerf
 
-    logger.debug(f"x_centre: {x_centre}, y_centre: {y_centre}, closest edge point: ({x_edge}, {y_edge})")
+        if shape.y - constants.saw_kerf <= p_y <= shape.y + shape.height + constants.saw_kerf:
+            # Then an x-collision is possible
+            if p_x > shape.x + shape.width + constants.saw_kerf > left_most_x:
+                left_most_x = shape.x + shape.width + constants.saw_kerf
 
-    """
-    We now create a set of candidate shapes that would fit in the largest possible rectangle.
-    However, it could be that there is a corner blocked in this largest rectangle. Hence we check
-    if the area is clear or not.
-    """
+            if p_x < shape.x - constants.saw_kerf < right_most_x:
+                right_most_x = shape.x - constants.saw_kerf
 
-    w_m = abs(x_edge - x_centre)
-    h_m = abs(y_edge - x_centre)
+    logger.debug(f"Post Calculations: x_l {left_most_x}, x_r {right_most_x}, y_min {lowest_y}, y_max {highest_y}.")
 
-    candidate_shapes = []
+    # Recheck the log boundaries
 
-    for shape in shape_types:
-        if shape.width <= w_m and shape.height <= h_m:
-            candidate_shapes.append(shape)
-
-    if len(candidate_shapes) == 0:
-        # No feasible candidate for set up shape
-        # We attempt to salve by resizing it purely in a vertical or horizontal manner
-        # (instead of going to the closest edge point)
-        # TODO: ^
-        _, x_max = log.calculate_edge_positions_on_circle(z=y)
-        _, y_max = log.calculate_edge_positions_on_circle(z=x)
-        # TODO: Implement check for grabbing either max or min based on orientation
-
-    is_empty, violating_shapes = ALNS_tools.check_if_rectangle_empty(x_0=min(x_edge, x_centre),
-                                                                     x_1=max(x_edge, x_centre),
-                                                                     y_0=min(y_edge, y_centre),
-                                                                     y_1=max(y_edge, y_centre),
+    (left_x_width, right_x_width,
+     low_y_width, top_y_width) = ALNS_tools.fit_points_in_boundaries(left_most_x, right_most_x,
+                                                                     lowest_y, highest_y,
+                                                                     priority="width",
                                                                      log=log)
+    (left_x_height, right_x_height,
+     low_y_height, top_y_height) = ALNS_tools.fit_points_in_boundaries(left_most_x, right_most_x,
+                                                                       lowest_y, highest_y,
+                                                                       priority="height",
+                                                                       log=log)
+    logger.debug(f"Outcome prioritizing width: xy: "
+                 f"({left_x_width}, {low_y_width}) ({right_x_width}, {top_y_width})")
+    logger.debug(f"Outcome prioritizing height: xy: "
+                 f"({left_x_height}, {low_y_height}) ({right_x_height}, {top_y_height})")
+    wide_candidate_shapes = [s for s in shape_types if s.width <= right_x_width - left_x_width
+                             and s.height <= top_y_width - low_y_width]
+    high_candidate_shapes = [s for s in shape_types if s.width <= right_x_height - left_x_height
+                             and s.height <= top_y_height - low_y_height]
+    new_shapes_wide, usage_wide = ALNS_tools.fit_shapes_in_rect_using_lp(x_min=left_x_width, x_max=right_x_width,
+                                                                         y_min=low_y_width, y_max=top_y_width,
+                                                                         candidate_shapes=wide_candidate_shapes,
+                                                                         shape_types=shape_types, shapes=[])
+    new_shapes_high, usage_high = ALNS_tools.fit_shapes_in_rect_using_lp(x_min=left_x_height, x_max=right_x_height,
+                                                                         y_min=low_y_height, y_max=top_y_height,
+                                                                         candidate_shapes=high_candidate_shapes,
+                                                                         shape_types=shape_types, shapes=[])
 
-    # if there are shapes that exist in the defined rectangle, we have to shave off that area
-    # and then see if we can re-expand the rectangle in a different ratio
-    for s in violating_shapes:
-        if orientation == "NE":
-            if s.x + s.width + constants.saw_kerf >= x_centre:
-                x_centre = s.x + s.width + constants.saw_kerf
-            if s.y + s.height + constants.saw_kerf >= y_centre:
-                y_centre = s.y + s.height + constants.saw_kerf
-        elif orientation == "SE":
-            if s.x + s.width + constants.saw_kerf >= x_centre:
-                x_centre = s.x + s.width + constants.saw_kerf
-            if s.y - constants.saw_kerf <= y_centre:
-                y_centre = s.y - constants.saw_kerf
-        elif orientation == "SW":
-            if s.x - constants.saw_kerf <= x_centre:
-                x_centre = s.x - constants.saw_kerf
-            if s.y - constants.saw_kerf <= y_centre:
-                y_centre = s.y - constants.saw_kerf
-        elif orientation == "NW":
-            if s.x - constants.saw_kerf <= x_centre:
-                x_centre = s.x - constants.saw_kerf
-            if s.y + s.height + constants.saw_kerf >= y_centre:
-                y_centre = s.y + s.height + constants.saw_kerf
-        else:
-            raise NotImplementedError(f"No such orientation as {orientation}.")
-
-    testing_tools.plot_log(diameter=log.diameter, x=x_centre, y=y_centre,
-                           w=(x_centre - x_edge), h=(y_centre - y_edge))
-
-    # Solve LP
-    new_shapes = ALNS_tools.fit_shapes_in_rect_using_lp(x_min=min(x_edge, x_centre),
-                                                        x_max=max(x_edge, x_centre),
-                                                        y_min=min(y_edge, y_centre),
-                                                        y_max=max(y_edge, y_centre),
-                                                        candidate_shapes=candidate_shapes,
-                                                        shape_types=shape_types,
-                                                        shapes=[])
-
-    for shape in new_shapes:
-        logger.debug(f"Adding shape {shape.shape_id} to log {log.log_id}")
-        shape.assign_to_log(log)
+    if usage_wide == usage_high == 0:
+        logging.debug("No feasible solution")
+    elif usage_wide > usage_high:
+        logging.debug("Picking solution prioritising width")
+        for shape in new_shapes_wide:
+            shape.assign_to_log(log)
+    elif usage_wide < usage_high:
+        logging.debug("Picking solution prioritising height")
+        for shape in new_shapes_high:
+            shape.assign_to_log(log)
 
 
 def single_extension_repair(log, shape_types):
