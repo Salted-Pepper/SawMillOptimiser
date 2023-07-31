@@ -1,4 +1,7 @@
+import ALNS_tools
 import constants
+import numpy as np
+
 from logs import Log
 
 
@@ -15,7 +18,51 @@ def inefficiency_destroy(log, shape_types):
 
 
 def random_point_expansion(log, shape_types):
-    pass
+    """
+    RPE selects a random point in the log
+    :param log:
+    :param shape_types:
+    :return:
+    """
+    found_point = False
+
+    while not found_point:
+        x, y = np.random.uniform(low=0, high=log.diameter, size=2)
+
+        if log.check_if_point_in_log(x, y):
+            point_in_shape = False
+            for shape in log.shapes:
+                if shape.check_if_point_in_shape(x, y):
+                    point_in_shape = True
+                    continue
+
+            if not point_in_shape:
+                found_point = True
+
+    orientation = ALNS_tools.find_orientation_from_points(centre=log.diameter / 2, x=x, y=y)
+
+    """
+    Feasible point has been found, attempt to expand towards the center point, and find first collision
+    Here we use the minimum width shape and the minimum height shape to ensure that we do not have to check every point.
+    Hence, we initially check the point the minimum distance away. 
+    If it is not occupied, we expand again with the same width.
+    If the tile is occupied, we find the shape the point is contained in, and go to the edge of that shape
+    """
+
+    # Define parameter to track expansion
+    w_min = constants.min_width_shape_type.width
+    h_min = constants.min_height_shape_type.height
+
+    """
+    x_to_centre:    maximum x we can move towards centre x without collision
+    x_away_centre:  maximum x we can move away from centre x without collision
+    y_to_centre:    maximum y we can move towards centre y without collision
+    y_away_centre:  maximum y we can move away from centre y without collision
+    """
+
+
+
+
 
 
 def single_extension_repair(log, shape_types):

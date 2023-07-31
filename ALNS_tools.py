@@ -139,6 +139,39 @@ def save_iteration_data(logs: list, df: pd.DataFrame, iteration: int) -> pd.Data
     return df
 
 
+def calculate_smallest_shape_types(shape_types: list) -> None:
+    """
+    Calculates shapes with minimum properties to check if there exists any shape that fits in a certain height/width
+
+    :param shape_types: List of shapetypes
+    :return:
+    """
+    min_width_shape = None
+    min_height_shape = None
+    smallest_shape = None
+
+    min_width = math.inf
+    min_height = math.inf
+    smallest_shape_total = math.inf
+
+    for shape in shape_types:
+        if shape.height < min_height:
+            min_height_shape = shape
+            min_height = shape.height
+
+        if shape.width < min_width:
+            min_width_shape = shape
+            min_width = shape.width
+
+        if shape.width + shape.height < smallest_shape_total:
+            smallest_shape = shape
+            smallest_shape_total = shape.width + shape.height
+
+    constants.min_height_shape_type = min_height_shape
+    constants.min_width_shape_type = min_width_shape
+    constants.smallest_total_shapes = smallest_shape
+
+
 def select_log(logs: list) -> Log:
     """
     Selects a random log based on the relative inefficiency
@@ -148,6 +181,27 @@ def select_log(logs: list) -> Log:
     """
     total_efficiency = sum([1 - log.efficiency for log in logs])
     return random.choices(logs, weights=[(1 - log.efficiency) / total_efficiency for log in logs])
+
+
+def find_orientation_from_points(centre: float, x: float, y: float) -> str:
+    """
+    :param centre: Radius of circle (r, r) is centre position
+    :param x: x position
+    :param y: y position
+    :return:
+    """
+
+    if x >= centre and y >= centre:
+        orientation = "NE"
+    elif x < centre and y >= centre:
+        orientation = "SE"
+    elif x < centre and y < centre:
+        orientation = "SW"
+    elif x >= centre and y < centre:
+        orientation = "NW"
+    else:
+        raise ValueError(f"No Orientation defined for ({x}, {y})")
+    return orientation
 
 
 def plot_iteration_data():

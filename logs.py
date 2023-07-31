@@ -81,7 +81,7 @@ class Log:
                     print(f"Shapes {s1.shape_id} and {s2.shape_id} do not intersect")
         return True
 
-    def add_shape(self, shape) -> None:
+    def add_shape(self, shape: Shape) -> None:
         self.shapes.append(shape)
         self.volume_used += shape.get_volume()
         self.calculate_efficiency()
@@ -90,12 +90,22 @@ class Log:
         # TODO: Create function to calculate sawdust (circumference - shared circumference)
         return -1 / self.volume
 
-    def remove_shape(self, shape) -> None:
+    def remove_shape(self, shape: Shape) -> None:
         try:
             self.shapes.remove(shape)
             self.calculate_efficiency()
         except ValueError:
-            print(f"Was not able to remove shape {shape.id} from log {self.log_id}.")
+            print(f"Was not able to remove shape {shape.shape_id} from log {self.log_id}.")
+
+    def check_if_point_in_log(self, x: float, y: float) -> bool:
+
+        x_min, x_max = self.calculate_edge_positions_on_circle(y)
+        y_min, y_max = self.calculate_edge_positions_on_circle(x)
+
+        if y_min <= y <= y_max and x_min <= x < x_max:
+            return True
+        else:
+            return False
 
 
 def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:

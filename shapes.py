@@ -141,6 +141,12 @@ class Shape:
             self.rect = None
             self.rect_kerf = None
 
+    def check_if_point_in_shape(self, x: float, y: float):
+        if self.x <= x <= self.x + self.width and self.y <= y <= self.y + self.height:
+            return True
+        else:
+            return False
+
     def shape_is_within_log(self) -> bool:
         if self.log is None:
             print("Rectangle not assigned to a log")

@@ -28,8 +28,15 @@ def run_ALNS(logs: list, shape_types: list):
     temperature = constants.starting_temperature
     destroy_degree = 4
 
+    """
+    Initialize methods and create pre-emptive calculations for parameters that will be re-used
+    """
+
+    ALNS_tools.calculate_smallest_shape_types(shape_types)
+
     repair_methods = [Method(name="RANDOM"), Method(name="SUBSPACE"), Method(name="INEFFICIENCY")]
     destroy_methods = [Method(name="RPE"), Method(name="SER"), Method(name="BER")]
+    tuck_method = Method(name="TUCK")
 
     logs_updated = copy.deepcopy(logs)
 
@@ -83,7 +90,7 @@ def run_ALNS(logs: list, shape_types: list):
 
 
 def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max: float,
-                                candidate_shapes: list, shape_types: list, shapes: list, log: Log) -> list:
+                                candidate_shapes: list, shape_types: list, shapes: list) -> list:
     """
     This function applies an LP solver to a given space, optimising the space for the given candidate shapes.
     The given space, described by (x,y)-values, includes the saw kerf on the sides.
@@ -96,7 +103,6 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
     :param candidate_shapes: List of shapes to fill the given space
     :param shape_types: List of all available shapes
     :param shapes: List of shapes currently in the considered log
-    :param log: Log to which the shapes will be added
     :return shapes: List of added shapes
     """
     solutions = []
