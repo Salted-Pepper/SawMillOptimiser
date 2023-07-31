@@ -17,6 +17,8 @@ logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%d-%b-%y %H:%M:%S")
 logger = logging.getLogger("ALNS_Logger")
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
+logging.getLogger("PIL").setLevel(logging.WARNING)
+logging.getLogger("PIL.PngImagePlugin").setLevel(logging.WARNING)
 logger.setLevel(logging.DEBUG)
 
 solution_quality_df = pd.DataFrame(columns=["iteration", "log", "score", "saw_dust", "volume_used", "efficiency"])
@@ -44,23 +46,27 @@ def run_ALNS(logs: list, shape_types: list):
     Start ALNS Sequence, select random methods to repair and destroy based on assigned probabilities
     """
     while temperature > 0 and iteration <= constants.max_iterations:
-
+        logger.debug(f"Going into iteration {iteration} with temperature {temperature}...")
         log = ALNS_tools.select_log(logs_updated)
+        logger.debug(f"Select log {log.log_id}.")
         log_old = copy.deepcopy(log)
 
         # Only run repair methods for the first couple of iterations to fill up empty space in initial solution
         if iteration < constants.fill_up_iterations:
             for i in range(math.floor(destroy_degree)):
                 repair_method = random.choices(repair_methods,
-                                               weights=[method.probability for method in repair_methods])
+                                               weights=[method.probability for method in repair_methods],
+                                               k=1)[0]
                 repair_method.used()
                 repair_method.execute(log, shape_types)
         else:
             for i in range(math.floor(destroy_degree)):
                 repair_method = random.choices(repair_methods,
-                                               weights=[method.probability for method in repair_methods])
+                                               weights=[method.probability for method in repair_methods],
+                                               k=1)[0]
                 destroy_method = random.choices(destroy_methods,
-                                                weights=[method.probability for method in destroy_methods])
+                                                weights=[method.probability for method in destroy_methods],
+                                                k=1)[0]
 
                 repair_method.used()
                 destroy_method.used()
@@ -82,6 +88,8 @@ def run_ALNS(logs: list, shape_types: list):
 
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
         temperature = ALNS_tools.update_temperature(temperature, accept_new_solution, delta, score)
+        logger.debug(f"New temperature is {temperature}, new solution accepted: {accept_new_solution},"
+                     f"delta: {delta}, score:{score}")
         update_method_probability(repair_methods, accept_new_solution)
         update_method_probability(destroy_methods, accept_new_solution)
         iteration += 1

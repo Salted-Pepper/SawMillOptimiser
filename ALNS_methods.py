@@ -54,7 +54,7 @@ def random_point_expansion(log, shape_types) -> None:
 
             if not point_in_shape:
                 found_point = True
-
+    logger.debug(f"Attempting Random Point Expansion in Log {log.log_id} at ({x}, {y})")
     orientation = ALNS_tools.find_orientation_from_points(centre=log.diameter / 2, x=x, y=y)
 
     """
@@ -63,13 +63,7 @@ def random_point_expansion(log, shape_types) -> None:
     Hence, we initially check the point the minimum distance away. 
     If it is not occupied, we expand again with the same width.
     If the tile is occupied, we find the shape the point is contained in, and go to the edge of that shape
-    """
 
-    # Define parameter to track expansion
-    w_min = constants.min_width_shape_type.width
-    h_min = constants.min_height_shape_type.height
-
-    """
     x_edge: X coord of point closest log edge
     y_edge: Y coord of point closest log edge
     
@@ -174,6 +168,7 @@ def random_point_expansion(log, shape_types) -> None:
                                                         shapes=[])
 
     for shape in new_shapes:
+        logger.debug(f"Adding shape {shape.shape_id} to log {log.log_id}")
         shape.assign_to_log(log)
 
 
@@ -188,7 +183,8 @@ def buddy_extension_repair(log, shape_types):
 
 
 class Method:
-    adjust_rate = 0.95
+    failure_adjust_rate = 0.95
+    success_adjust_rate = 0.99
 
     def __init__(self, name):
         self.name = name
@@ -197,8 +193,11 @@ class Method:
         self.method_used = False
         self.times_used = 0
 
-    def reject_method(self):
-        self.performance = self.performance * self.adjust_rate
+    def method_failed(self):
+        self.performance = self.performance * self.failure_adjust_rate
+
+    def method_success(self):
+        self.performance = self.performance * self.success_adjust_rate
 
     def execute(self, log, shape_types):
 

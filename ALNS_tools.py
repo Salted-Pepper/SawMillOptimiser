@@ -113,14 +113,14 @@ def check_if_new_solution_better(log_old: Log, log: Log, temperature: float) -> 
     log_old_score = calculate_log_score(log_old)
     log_score = calculate_log_score(log)
     # TODO: Probability based acceptance using temperature
-    if log_old_score > log_score:
+    if log_old_score >= log_score:
         return False, 0, log_old_score
     else:
         return True, log_score - log_old_score, log_score
 
 
 def update_temperature(temperature: float, updated: bool, delta: float, score: float) -> float:
-    if updated:
+    if updated and delta != 0:
         temperature = temperature * (delta / score) ** (1 / 10)
     else:
         temperature = temperature * constants.temperature_sensitivity
@@ -178,12 +178,11 @@ def calculate_smallest_shape_types(shape_types: list) -> None:
 def select_log(logs: list) -> Log:
     """
     Selects a random log based on the relative inefficiency
-
     :param logs:
     :return:
     """
     total_efficiency = sum([1 - log.efficiency for log in logs])
-    return random.choices(logs, weights=[(1 - log.efficiency) / total_efficiency for log in logs])
+    return random.choices(logs, weights=[(1 - log.efficiency) / total_efficiency for log in logs])[0]
 
 
 def find_orientation_from_points(centre: float, x: float, y: float) -> str:

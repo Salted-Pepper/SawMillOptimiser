@@ -89,11 +89,12 @@ if __name__ == '__main__':
     """
     Create Shapes Based on Demand
     """
-    # TODO: Define how shapes are created/distributed
 
     ALNS.greedy_place(all_shapes=shapes,
                       logs=logs,
                       shape_types=shape_types)
+
+    ALNS.run_ALNS(logs=logs, shape_types=shape_types)
 
     for shape in shapes:
         shape.add_rect_to_plot()
