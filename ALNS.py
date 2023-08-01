@@ -29,6 +29,7 @@ def run_ALNS(logs: list, shape_types: list):
     iteration = 1
     temperature = constants.starting_temperature
     destroy_degree = 4
+    repair_degree = 5
 
     """
     Initialize methods and create pre-emptive calculations for parameters that will be re-used
@@ -52,7 +53,7 @@ def run_ALNS(logs: list, shape_types: list):
 
         # Only run repair methods for the first couple of iterations to fill up empty space in initial solution
         if iteration < constants.fill_up_iterations:
-            for i in range(math.floor(destroy_degree)):
+            for i in range(math.floor(repair_degree)):
                 repair_method = random.choices(repair_methods,
                                                weights=[method.probability for method in repair_methods],
                                                k=1)[0]
@@ -60,17 +61,15 @@ def run_ALNS(logs: list, shape_types: list):
                 repair_method.execute(log_new, shape_types)
         else:
             for i in range(math.floor(destroy_degree)):
-                repair_method = random.choices(repair_methods,
-                                               weights=[method.probability for method in repair_methods],
-                                               k=1)[0]
+
                 destroy_method = random.choices(destroy_methods,
-                                                weights=[method.probability for method in destroy_methods],
-                                                k=1)[0]
-
-                repair_method.used()
+                                                weights=[method.probability for method in destroy_methods], k=1)[0]
                 destroy_method.used()
-
                 destroy_method.execute(log_new, shape_types)
+            for i in range(math.floor(repair_degree)):
+                repair_method = random.choices(repair_methods,
+                                               weights=[method.probability for method in repair_methods], k=1)[0]
+                repair_method.used()
                 repair_method.execute(log_new, shape_types)
 
         ALNS_tools.update_log_scores([log_new])

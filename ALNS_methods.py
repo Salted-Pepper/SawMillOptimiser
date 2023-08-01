@@ -1,8 +1,11 @@
-import ALNS_tools
 import constants
 import numpy as np
 import logging
+import math
 import datetime
+import random
+
+import ALNS_tools
 
 import testing_tools
 from logs import Log
@@ -14,8 +17,20 @@ logger = logging.getLogger("ALNS_Methods")
 logger.setLevel(logging.DEBUG)
 
 
-def random_destroy(log, shape_types):
+def random_destroy(log: Log, shape_types: list):
     logger.debug("Picked Random Destroy Method")
+
+    probabilities = []
+    total_distance = sum([math.sqrt((s.width - log.diameter)**2 + (s.height - log.diameter)**2) for s in log.shapes])
+
+    for shape in log.shapes:
+        probabilities.append(math.sqrt((shape.width - log.diameter)**2 +
+                                       (shape.height - log.diameter)**2) / total_distance)
+
+    removed_shape = random.choices(log.shapes, weights=probabilities)[0]
+
+    removed_shape.remove_from_log()
+
     pass
 
 
@@ -30,8 +45,6 @@ def inefficiency_destroy(log, shape_types):
 
 
 def random_point_expansion(log, shape_types) -> None:
-    # TODO: fix coords calculations - not consistent, overlaps with shapes sometimes
-
     """
     RPE selects a random point in the log, it then calculates the maximum rectangle it can create until there
     is a collision in every direction. It then checks if this area is empty of shapes. If so, it applies an LP to
