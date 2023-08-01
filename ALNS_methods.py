@@ -27,6 +27,9 @@ def random_destroy(log: Log) -> bool:
     logger.debug("Picked Random Destroy Method")
     successful = False
 
+    if len(log.shapes) == 0:
+        return successful
+
     probabilities = []
     total_distance = sum([math.sqrt((s.width - log.diameter)**2 + (s.height - log.diameter)**2) for s in log.shapes])
 
@@ -35,10 +38,11 @@ def random_destroy(log: Log) -> bool:
                                        (shape.height - log.diameter)**2) / total_distance)
 
     removed_shape = random.choices(log.shapes, weights=probabilities)[0]
-
-    removed_shape.remove_from_log()
     logger.debug(f"Removed Shape at ({removed_shape.x}, {removed_shape.y}), "
                  f"({removed_shape.x + removed_shape.width}, {removed_shape.y + removed_shape.height})")
+
+    removed_shape.remove_from_log()
+    del removed_shape
     return successful
 
 
@@ -229,22 +233,30 @@ class Method:
         self.performance = self.performance * self.success_adjust_rate
 
     def execute(self, log, shape_types: list) -> bool:
-
-        if self.name == "RANDOM":
-            succeeded = random_destroy(log)
-        elif self.name == "SUBSPACE":
-            succeeded = subspace_destroy(log, shape_types)
-        elif self.name == "INEFFICIENCY":
-            succeeded = inefficiency_destroy(log, shape_types)
-        elif self.name == "RPE":
-            succeeded = random_point_expansion(log, shape_types)
-        elif self.name == "SER":
-            succeeded = single_extension_repair(log, shape_types)
-        elif self.name == "BER":
-            succeeded = buddy_extension_repair(log, shape_types)
-        else:
-            raise ValueError(f"ALNS Method {self.name} Not Implemented")
-        return succeeded
+        attempts = 0
+        while attempts < constants.repair_max_attempts:
+            if self.name == "RANDOM":
+                succeeded = random_destroy(log)
+            elif self.name == "SUBSPACE":
+                succeeded = subspace_destroy(log, shape_types)
+            elif self.name == "INEFFICIENCY":
+                succeeded = inefficiency_destroy(log, shape_types)
+            elif self.name == "RPE":
+                succeeded = random_point_expansion(log, shape_types)
+            elif self.name == "SER":
+                succeeded = single_extension_repair(log, shape_types)
+            elif self.name == "BER":
+                succeeded = buddy_extension_repair(log, shape_types)
+            else:
+                raise ValueError(f"ALNS Method {self.name} Not Implemented")
+            if succeeded:
+                logger.debug(f"Method {self.name} succeeded in {attempts} attempts.")
+                return succeeded
+            else:
+                attempts += 1
+        # If we exceed max iterations, the method failed.
+        logger.debug(f"Did not succeed using method {self.name} within the maximum iterations")
+        return False
 
     def used(self):
         self.method_used = True

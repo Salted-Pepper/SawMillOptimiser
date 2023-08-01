@@ -28,7 +28,7 @@ def run_ALNS(logs: list, shape_types: list):
     global solution_quality_df
     iteration = 1
     temperature = constants.starting_temperature
-    destroy_degree = 4
+    destroy_degree = 2
     repair_degree = 5
 
     """
@@ -48,7 +48,7 @@ def run_ALNS(logs: list, shape_types: list):
         logger.debug(f"Going into iteration {iteration} with temperature {temperature}...")
         log = ALNS_tools.select_log(logs)
         logger.debug(f"Select log {log.log_id}.")
-        # TODO: Invoke copy here
+        # TODO: Invoke copy here to ensure changes do not always apply
         log_new = log
 
         # Only run repair methods for the first couple of iterations to fill up empty space in initial solution
@@ -70,7 +70,11 @@ def run_ALNS(logs: list, shape_types: list):
                 repair_method = random.choices(repair_methods,
                                                weights=[method.probability for method in repair_methods], k=1)[0]
                 repair_method.used()
-                repair_method.execute(log_new, shape_types)
+                method_was_successful = repair_method.execute(log_new, shape_types)
+                if method_was_successful:
+                    logger.debug(f"Repair method {repair_method.name} was successful")
+                else:
+                    logger.debug(f"Repair method {repair_method.name} was unsuccessful")
 
         ALNS_tools.update_log_scores([log_new])
         accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log_new, log, temperature)
@@ -92,7 +96,7 @@ def run_ALNS(logs: list, shape_types: list):
         update_method_probability(destroy_methods, accept_new_solution)
         iteration += 1
 
-        # TODO: Update destroy degree based on temperature
+        # TODO: Update destroy/repair degree based on temperature
 
     return solution_quality_df
 
