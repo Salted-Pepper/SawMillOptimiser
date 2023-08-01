@@ -15,7 +15,7 @@ temperature_sensitivity = 0.99
 method_sensitivity_acceptance = 0.99
 method_sensitivity_rejection = 0.95
 
-fill_up_iterations = 10
+fill_up_iterations = 50
 
 min_width_shape_type = None
 min_height_shape_type = None

@@ -17,8 +17,15 @@ logger = logging.getLogger("ALNS_Methods")
 logger.setLevel(logging.DEBUG)
 
 
-def random_destroy(log: Log, shape_types: list):
+def random_destroy(log: Log) -> bool:
+    """
+    Randomly removes a shape from the log. Selects a shape based on distance to the centre.
+    The further the centre of a shape is from the centre of the log, the higher the likelihood of it being picked.
+    :param log:
+    :return:
+    """
     logger.debug("Picked Random Destroy Method")
+    successful = False
 
     probabilities = []
     total_distance = sum([math.sqrt((s.width - log.diameter)**2 + (s.height - log.diameter)**2) for s in log.shapes])
@@ -30,21 +37,24 @@ def random_destroy(log: Log, shape_types: list):
     removed_shape = random.choices(log.shapes, weights=probabilities)[0]
 
     removed_shape.remove_from_log()
+    logger.debug(f"Removed Shape at ({removed_shape.x}, {removed_shape.y}), "
+                 f"({removed_shape.x + removed_shape.width}, {removed_shape.y + removed_shape.height})")
+    return successful
 
-    pass
 
-
-def subspace_destroy(log, shape_types):
+def subspace_destroy(log: Log, shape_types: list) -> bool:
     logger.debug("Picked Subspace Destroy Method")
-    pass
+    successful = False
+    return successful
 
 
-def inefficiency_destroy(log, shape_types):
+def inefficiency_destroy(log: Log, shape_types: list) -> bool:
     logger.debug("Picked Inefficiency Destroy Method")
-    pass
+    successful = False
+    return successful
 
 
-def random_point_expansion(log, shape_types) -> None:
+def random_point_expansion(log: Log, shape_types: list) -> bool:
     """
     RPE selects a random point in the log, it then calculates the maximum rectangle it can create until there
     is a collision in every direction. It then checks if this area is empty of shapes. If so, it applies an LP to
@@ -54,7 +64,7 @@ def random_point_expansion(log, shape_types) -> None:
     :return:
     """
     logger.debug("Picked RPE Repair Method")
-
+    successful = False
     found_point = False
 
     while not found_point:
@@ -180,20 +190,25 @@ def random_point_expansion(log, shape_types) -> None:
         logging.debug("Picking solution prioritising width")
         for shape in new_shapes_wide:
             shape.assign_to_log(log)
+        successful = True
     elif usage_wide < usage_high:
         logging.debug("Picking solution prioritising height")
         for shape in new_shapes_high:
             shape.assign_to_log(log)
+        successful = True
+    return successful
 
 
-def single_extension_repair(log, shape_types):
+def single_extension_repair(log: Log, shape_types: list) -> bool:
     logger.debug("Picked Single Extension Repair Method")
-    pass
+    successful = False
+    return successful
 
 
-def buddy_extension_repair(log, shape_types):
+def buddy_extension_repair(log: Log, shape_types: list) -> bool:
     logger.debug("Picked Buddy Extension Repair Method")
-    pass
+    successful = False
+    return successful
 
 
 class Method:
@@ -213,22 +228,23 @@ class Method:
     def method_success(self):
         self.performance = self.performance * self.success_adjust_rate
 
-    def execute(self, log, shape_types):
+    def execute(self, log, shape_types: list) -> bool:
 
         if self.name == "RANDOM":
-            random_destroy(log, shape_types)
+            succeeded = random_destroy(log)
         elif self.name == "SUBSPACE":
-            subspace_destroy(log, shape_types)
+            succeeded = subspace_destroy(log, shape_types)
         elif self.name == "INEFFICIENCY":
-            inefficiency_destroy(log, shape_types)
+            succeeded = inefficiency_destroy(log, shape_types)
         elif self.name == "RPE":
-            random_point_expansion(log, shape_types)
+            succeeded = random_point_expansion(log, shape_types)
         elif self.name == "SER":
-            single_extension_repair(log, shape_types)
+            succeeded = single_extension_repair(log, shape_types)
         elif self.name == "BER":
-            buddy_extension_repair(log, shape_types)
+            succeeded = buddy_extension_repair(log, shape_types)
         else:
             raise ValueError(f"ALNS Method {self.name} Not Implemented")
+        return succeeded
 
     def used(self):
         self.method_used = True

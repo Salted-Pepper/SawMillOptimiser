@@ -47,6 +47,7 @@ class Shape:
         self.placed = False
         self.rect = None
         self.rect_kerf = None
+        self.text = None
 
     def set_location(self, x=None, y=None) -> None:
         """
@@ -109,10 +110,10 @@ class Shape:
         self.log.ax.add_patch(self.rect_kerf)
         self.log.ax.add_patch(self.rect)
 
-        self.log.ax.text(self.x + constants.rect_text_margin * self.width,
-                         self.y + constants.rect_text_margin * self.height,
-                         f"{self.width}x{self.height}",
-                         color="white")
+        self.text = self.log.ax.text(self.x + constants.rect_text_margin * self.width,
+                                     self.y + constants.rect_text_margin * self.height,
+                                     f"{self.width}x{self.height}",
+                                     color="white")
 
     def get_volume(self) -> float:
         return self.width * self.height
@@ -131,9 +132,11 @@ class Shape:
     def remove_from_plot(self):
         if self.rect is not None:
             self.rect.remove()
+            self.text.remove()
             self.rect_kerf.remove()
 
             self.rect = None
+            self.text = None
             self.rect_kerf = None
 
     def check_if_point_in_shape(self, x: float, y: float):
