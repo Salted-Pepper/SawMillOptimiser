@@ -13,8 +13,8 @@ from logs import Log
 
 date = datetime.date.today()
 logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%d-%b-%y %H:%M:%S")
-logger = logging.getLogger("ALNS_Tools Logger")
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%H:%M:%S")
+logger = logging.getLogger("ALNS_Tools")
 logger.setLevel(logging.DEBUG)
 
 
@@ -206,7 +206,7 @@ def find_orientation_from_points(centre: float, x: float, y: float) -> str:
     return orientation
 
 
-def check_if_rectangle_empty(x_0: float, x_1: float, y_0: float, y_1: float, log: Log):
+def check_if_rectangle_empty(x_0: float, x_1: float, y_0: float, y_1: float, log: Log) -> list:
     """
     This function checks if there is any shape within a given rectangle in a particular log.
     It does so by checking every delta x and delta y, where these delta values are defined
@@ -224,19 +224,20 @@ def check_if_rectangle_empty(x_0: float, x_1: float, y_0: float, y_1: float, log
     min_width_check = constants.min_width_shape_type.width
     min_height_check = constants.min_height_shape_type.height
 
-    width_steps = int(np.floor((x_1 - x_0) / min_width_check))
-    height_steps = int(np.floor((y_1 - y_0) / min_height_check))
+    width_steps = int(np.floor((x_1 - x_0) / (min_width_check - 1)))
+    height_steps = int(np.floor((y_1 - y_0) / (min_height_check - 1)))
+
+    x_steps = [x_0 + i * min_width_check for i in range(width_steps + 1)] + [x_1]
+    y_steps = [y_0 + j * min_width_check for j in range(height_steps + 1)] + [y_1]
 
     violating_shapes = []
-    for i in range(width_steps):
-        for j in range(height_steps):
+    for x_step in x_steps:
+        for y_step in y_steps:
+            logger.debug(f"Checking ({x_step: .2f}, {y_step: .2f})")
             for shape in log.shapes:
-                if shape.check_if_point_in_shape(x_0 + i * min_width_check, y_0 + j * min_height_check):
+                if shape.check_if_point_in_shape(x_step, y_step):
                     violating_shapes.append(shape)
-    if len(violating_shapes) > 0:
-        return True, violating_shapes
-    else:
-        return False, violating_shapes
+    return violating_shapes
 
 
 def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max: float,
@@ -323,15 +324,17 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
 
         solutions.append([rel_usage,
                           values,
-                          [w_m, x_min, x_max, width],
+                          [w_m, y_min, y_max, width],
                           "Vertical"])
 
     if len(solutions) == 0:
-        logging.warning(f"No Solution Found Using ALNS_tools LP Solver in ({x_min}, {y_min}), ({x_max}, {y_max})")
+        logging.warning(f"No Solution Found Using ALNS_tools LP Solver in "
+                        f"({x_min: .2f}, {y_min: .2f}), ({x_max: .2f}, {y_max: .2f})")
         return [], 0
 
     best_solution = max(solutions, key=lambda solution: solution[0])
-    shapes_top = best_solution[1]
+    rel_usage = best_solution[0]
+    shapes_sol = best_solution[1]
     z_minimal = best_solution[2][1]
     z_maximal = best_solution[2][2]
     orientation = best_solution[3]
@@ -339,7 +342,7 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
     z = z_minimal + constants.saw_kerf
 
     # Create a list of shapes with locations corresponding to solution
-    for shape_info in shapes_top:
+    for shape_info in shapes_sol:
         shape_id = shape_info[0]
         quantity = int(shape_info[1])
         shape_type = shape_types[shape_id]
@@ -347,52 +350,67 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
         if orientation == "Horizontal":
             for i in range(quantity):
                 shapes.append(Shape(shape_type=shape_type, x=z, y=y_min))
-                logger.debug(f"Added shape {shape_type.type_id}, at location {z, y_min}")
+                logger.debug(f"Suggesting shape {shape_type.type_id} with {shape_type.width}x{shape_type.height},"
+                             f" at location {z: .2f}, {y_min: .2f}")
                 z += shape_type.width + constants.saw_kerf
                 if z > z_maximal:
                     raise ValueError(f"Exceeding maximum x-value {z} > {z_maximal}.")
         elif orientation == "Vertical":
             for i in range(quantity):
                 shapes.append(Shape(shape_type=shape_type, x=x_min, y=z))
-                logger.debug(f"Added shape {shape_type.type_id}, at location {z, y_min}")
+                logger.debug(f"Suggesting shape {shape_type.type_id} with {shape_type.width}x{shape_type.height}, "
+                             f"at location {x_min:.2f}, {z:.2f}")
                 z += shape_type.height + constants.saw_kerf
                 if z > z_maximal:
-                    raise ValueError(f"Exceeding maximum x-value {z} > {z_maximal}.")
+                    raise ValueError(f"Exceeding maximum y-value {z} > {z_maximal}.")
 
     return shapes, rel_usage
 
 
 def fit_points_in_boundaries(left_x, right_x, low_y, high_y, priority: str, log: Log):
-    if priority == "width":
+    if priority == "height":
         x_left_boundary_low, x_right_boundary_low = log.calculate_edge_positions_on_circle(low_y)
         x_left_boundary_high, x_right_boundary_high = log.calculate_edge_positions_on_circle(high_y)
-        logger.debug(f"Picking max of: {left_x}, {x_left_boundary_low}, {x_left_boundary_high}")
-        logger.debug(f"Picking min of: {right_x}, {x_right_boundary_low}, {x_right_boundary_high}")
         left_x = max(left_x, x_left_boundary_low, x_left_boundary_high)
         right_x = min(right_x, x_right_boundary_low, x_right_boundary_high)
 
         y_bot_boundary_left, y_top_boundary_left = log.calculate_edge_positions_on_circle(left_x)
         y_bot_boundary_right, y_top_boundary_right = log.calculate_edge_positions_on_circle(right_x)
-        logger.debug(f"Picking max of: {low_y}, {y_bot_boundary_left}, {y_bot_boundary_right}")
-        logger.debug(f"Picking min of: {high_y}, {y_top_boundary_left}, {y_top_boundary_right}")
         low_y = max(low_y, y_bot_boundary_left, y_bot_boundary_right)
         high_y = min(high_y, y_top_boundary_left, y_top_boundary_right)
 
-    elif priority == "height":
+    elif priority == "width":
         y_bot_boundary_left, y_top_boundary_left = log.calculate_edge_positions_on_circle(left_x)
         y_bot_boundary_right, y_top_boundary_right = log.calculate_edge_positions_on_circle(right_x)
-        logger.debug(f"Picking max of: {low_y}, {y_bot_boundary_left}, {y_bot_boundary_right}")
-        logger.debug(f"Picking min of: {high_y}, {y_top_boundary_left}, {y_top_boundary_right}")
         low_y = max(low_y, y_bot_boundary_left, y_bot_boundary_right)
         high_y = min(high_y, y_top_boundary_left, y_top_boundary_right)
 
         x_left_boundary_low, x_right_boundary_low = log.calculate_edge_positions_on_circle(low_y)
         x_left_boundary_high, x_right_boundary_high = log.calculate_edge_positions_on_circle(high_y)
-        logger.debug(f"Picking max of: {left_x}, {x_left_boundary_low}, {x_left_boundary_high}")
-        logger.debug(f"Picking min of: {right_x}, {x_right_boundary_low}, {x_right_boundary_high}")
         left_x = max(left_x, x_left_boundary_low, x_left_boundary_high)
         right_x = min(right_x, x_right_boundary_low, x_right_boundary_high)
     return left_x, right_x, low_y, high_y
+
+
+def check_if_shape_in_rectangle(shape: Shape, x_0, x_1, y_0, y_1) -> bool:
+    sk = constants.saw_kerf
+    a_x_0 = shape.x
+    a_x_1 = shape.x + shape.width
+    a_y_0 = shape.y
+    a_y_1 = shape.y + shape.height
+
+    b_x_0 = x_0
+    b_x_1 = x_1
+    b_y_0 = y_0
+    b_y_1 = y_1
+
+    if a_x_0 - sk <= b_x_1 \
+            and a_x_1 + sk >= b_x_0 \
+            and a_y_0 - sk <= b_y_1 \
+            and a_y_1 + sk >= b_y_0:
+        return True
+    else:
+        return False
 
 
 def plot_iteration_data():

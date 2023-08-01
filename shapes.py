@@ -95,11 +95,11 @@ class Shape:
         if self.colour is not None:
             self.rect = mpatches.Rectangle((self.x, self.y),
                                            self.width, self.height,
-                                           color=self.colour, alpha=0.9)
+                                           color=self.colour, alpha=0.7)
         else:
             self.rect = mpatches.Rectangle((self.x, self.y),
                                            self.width, self.height,
-                                           alpha=0.9)
+                                           alpha=0.7)
 
         self.rect_kerf = mpatches.Rectangle((self.x - constants.saw_kerf,
                                              self.y - constants.saw_kerf),

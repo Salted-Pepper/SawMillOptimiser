@@ -87,8 +87,8 @@ def run_ALNS(logs: list, shape_types: list):
 
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
         temperature = ALNS_tools.update_temperature(temperature, accept_new_solution, delta, score)
-        logger.debug(f"New temperature is {temperature}, new solution accepted: {accept_new_solution},"
-                     f"delta: {delta}, score:{score}")
+        logger.debug(f"New temperature is {temperature: .3f}, new solution accepted: {accept_new_solution},"
+                     f"delta: {delta: .2f}, score:{score: .2f}")
         update_method_probability(repair_methods, accept_new_solution)
         update_method_probability(destroy_methods, accept_new_solution)
         iteration += 1

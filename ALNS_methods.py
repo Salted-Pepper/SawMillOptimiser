@@ -9,8 +9,8 @@ from logs import Log
 
 date = datetime.date.today()
 logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%d-%b-%y %H:%M:%S")
-logger = logging.getLogger("ALNS_Methods Logger")
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%H:%M:%S")
+logger = logging.getLogger("ALNS_Methods")
 logger.setLevel(logging.DEBUG)
 
 
@@ -30,7 +30,7 @@ def inefficiency_destroy(log, shape_types):
 
 
 def random_point_expansion(log, shape_types) -> None:
-    # TODO: fix coords calculations - not consistent - Use ratios instead?
+    # TODO: fix coords calculations - not consistent, overlaps with shapes sometimes
 
     """
     RPE selects a random point in the log, it then calculates the maximum rectangle it can create until there
@@ -56,7 +56,7 @@ def random_point_expansion(log, shape_types) -> None:
             if not point_in_shape:
                 found_point = True
 
-    logger.debug(f"Attempting Random Point Expansion in Log {log.log_id} at ({p_x}, {p_y})")
+    logger.debug(f"Attempting Random Point Expansion in Log {log.log_id} at ({p_x: .2f}, {p_y: .2f})")
     orientation = ALNS_tools.find_orientation_from_points(centre=log.diameter / 2, x=p_x, y=p_y)
 
     """
@@ -70,7 +70,8 @@ def random_point_expansion(log, shape_types) -> None:
     left_most_x, right_most_x = log.calculate_edge_positions_on_circle(p_y)
     lowest_y, highest_y = log.calculate_edge_positions_on_circle(p_x)
 
-    logger.debug(f"Initialized x_l {left_most_x}, x_r {right_most_x}, y_min {lowest_y}, y_max {highest_y}.")
+    logger.debug(f"Initialized x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
+                 f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
 
     for shape in log.shapes:
         # see if shape is in same p_x dimension
@@ -89,11 +90,50 @@ def random_point_expansion(log, shape_types) -> None:
 
             if p_x < shape.x - constants.saw_kerf < right_most_x:
                 right_most_x = shape.x - constants.saw_kerf
+    logger.debug(f"After checking shape collisions x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
+                 f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
+    # Check if rectangle is empty
+    violating_shapes = ALNS_tools.check_if_rectangle_empty(x_0=left_most_x, x_1=right_most_x,
+                                                           y_0=lowest_y, y_1=highest_y, log=log)
+    logging.debug(f"Found {len(violating_shapes)} violating shapes.")
+    for s in violating_shapes:
+        logging.debug(f"Violating Shape at ({s.x: .2f}, {s.y: .2f} with w:{s.width: .2f}, h:{s.height: .2f}) in"
+                      f"x:({left_most_x: .2f}, {right_most_x: .2f}), y:({lowest_y: .2f}, {highest_y: .2f})")
 
-    logger.debug(f"Post Calculations: x_l {left_most_x}, x_r {right_most_x}, y_min {lowest_y}, y_max {highest_y}.")
+    # For all violating shapes we have to make a cut in the plane to ensure the rectangle is clean
+    for shape in violating_shapes:
+        # Check if shape still violates cut, as previous cuts could have put this shape out of violation
+        violates = ALNS_tools.check_if_shape_in_rectangle(shape=shape, x_0=left_most_x, x_1=right_most_x,
+                                                          y_0=lowest_y, y_1=highest_y)
+        if not violates:
+            continue
+
+        # There are 4 possible cuts - find the cut that loses the least surface area
+        cut_upper_off = (right_most_x - left_most_x) * ((shape.y-constants.saw_kerf) - lowest_y)
+        cut_lower_off = (right_most_x - left_most_x) * (highest_y - (shape.y+shape.height+constants.saw_kerf))
+        cut_left_off = (right_most_x - (shape.x+shape.width+constants.saw_kerf)) * (highest_y - lowest_y)
+        cut_right_off = ((shape.x-constants.saw_kerf) - left_most_x)
+        cuts = [cut_upper_off, cut_lower_off, cut_left_off, cut_right_off]
+
+        # Update Values Based On Selected Optimal Cut
+        largest_remaining_cut = max(cuts)
+        if cut_upper_off == largest_remaining_cut:
+            highest_y = shape.y - constants.saw_kerf
+            logging.debug(f"Cutting off top past {highest_y: .2f}")
+        elif cut_lower_off == largest_remaining_cut:
+            lowest_y = shape.y + shape.height+constants.saw_kerf
+            logging.debug(f"Cutting off lower under {lowest_y: .2f}")
+        elif cut_left_off == largest_remaining_cut:
+            left_most_x = shape.x + shape.width+constants.saw_kerf
+            logging.debug(f"Cutting off left of {left_most_x: .2f}")
+        else:
+            right_most_x = shape.x - constants.saw_kerf
+            logging.debug(f"Cutting off right of {right_most_x: .2f}")
+
+    logger.debug(f"Post Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
+                 f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
 
     # Recheck the log boundaries
-
     (left_x_width, right_x_width,
      low_y_width, top_y_width) = ALNS_tools.fit_points_in_boundaries(left_most_x, right_most_x,
                                                                      lowest_y, highest_y,
@@ -105,9 +145,9 @@ def random_point_expansion(log, shape_types) -> None:
                                                                        priority="height",
                                                                        log=log)
     logger.debug(f"Outcome prioritizing width: xy: "
-                 f"({left_x_width}, {low_y_width}) ({right_x_width}, {top_y_width})")
+                 f"({left_x_width: .2f}, {low_y_width: .2f}) ({right_x_width: .2f}, {top_y_width: .2f})")
     logger.debug(f"Outcome prioritizing height: xy: "
-                 f"({left_x_height}, {low_y_height}) ({right_x_height}, {top_y_height})")
+                 f"({left_x_height: .2f}, {low_y_height: .2f}) ({right_x_height: .2f}, {top_y_height: .2f})")
     wide_candidate_shapes = [s for s in shape_types if s.width <= right_x_width - left_x_width
                              and s.height <= top_y_width - low_y_width]
     high_candidate_shapes = [s for s in shape_types if s.width <= right_x_height - left_x_height

@@ -9,11 +9,11 @@ rect_text_margin = 0.01
 ALNS Parameters
 """
 starting_temperature = 100
-max_iterations = 10
+max_iterations = 500
 
-temperature_sensitivity = 0.9
+temperature_sensitivity = 0.99
 method_sensitivity_acceptance = 0.99
-method_sensitivity_rejection = 0.80
+method_sensitivity_rejection = 0.95
 
 fill_up_iterations = 10
 
