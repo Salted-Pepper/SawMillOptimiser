@@ -1,9 +1,18 @@
+import logging
+
 import constants
 from shapes import Shape
 
 import datetime
 import math
+import random
 import matplotlib.pyplot as plt
+
+date = datetime.date.today()
+logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%H:%M:%S")
+logger = logging.getLogger("Logs")
+logger.setLevel(logging.DEBUG)
 
 log_id = 0
 
@@ -45,8 +54,8 @@ class Log:
     def update_plot_title(self) -> None:
         self.ax.set_title(f"id: {self.log_id}, "
                           r"$d_i$:" + f"{self.diameter}, "
-                          r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
-                          r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}")
+                                      r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
+                                                     r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}")
 
     def calculate_efficiency(self) -> float:
         self.efficiency = self.volume_used / self.volume
@@ -120,6 +129,45 @@ class Log:
         y_edge = r + v_y / mag_v * r
         return x_edge, y_edge
 
+    def find_shapes_closest_to_shape(self, c_shape: Shape, orientation: str) -> float:
+        """
+        :param c_shape: central shape (shape of which we consider the surrounding shapes)
+        :param orientation: left, right, up, down
+        :return:
+        """
+        min_space = self.diameter
+        other_shapes = [s for s in self.shapes if s.shape_id != c_shape.shape_id]
+        if orientation == "left":
+            # Check if shapes would intersect if expanded till edge
+            for shape in other_shapes:
+                if (shape.y + shape.height + constants.saw_kerf < c_shape.y or
+                        shape.y > c_shape.y + c_shape.height + constants.saw_kerf):
+                    if c_shape.x - (shape.x + shape.width + constants.saw_kerf) < min_space:
+                        min_space = c_shape.x - (shape.x + shape.width + constants.saw_kerf)
+        elif orientation == "right":
+            for shape in other_shapes:
+                if (shape.y + shape.height + constants.saw_kerf < c_shape.y or
+                        shape.y > c_shape.y + c_shape.height + constants.saw_kerf):
+                    if shape.x - (c_shape.x + c_shape.width + constants.saw_kerf) < min_space:
+                        min_space = shape.x - (c_shape.x + c_shape.width + constants.saw_kerf)
+        elif orientation == "up":
+            for shape in other_shapes:
+                if (shape.x + shape.width + constants.saw_kerf < c_shape.x or
+                        shape.x > c_shape.x + c_shape.width + constants.saw_kerf):
+                    if shape.y - (c_shape.y + c_shape.height + constants.saw_kerf) < min_space:
+                        min_space = shape.y - (c_shape.y + c_shape.height + constants.saw_kerf) < min_space
+        elif orientation == "down":
+            for shape in other_shapes:
+                if (shape.x + shape.width + constants.saw_kerf < c_shape.x or
+                        shape.x > c_shape.x + c_shape.width + constants.saw_kerf):
+                    if c_shape.y - (shape.y + shape.height + constants.saw_kerf) < min_space:
+                        min_space = c_shape.y - (shape.y + shape.height + constants.saw_kerf)
+        if min_space < 0:
+            logger.error(f"Found minimum space between pieces of {min_space} for shape at "
+                         f"({c_shape.x}, {c_shape.y}) with (w,h)=({c_shape.width},{c_shape.height}) in log"
+                         f"{self.log_id}")
+        return min_space
+
 
 def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
     sk = constants.saw_kerf
@@ -140,3 +188,15 @@ def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
         return True
     else:
         return False
+
+
+def select_random_shape_from_log(log):
+    probabilities = []
+    total_distance = sum(
+        [math.sqrt((s.width - log.diameter) ** 2 + (s.height - log.diameter) ** 2) for s in log.shapes])
+
+    for shape in log.shapes:
+        probabilities.append(math.sqrt((shape.width - log.diameter) ** 2 +
+                                       (shape.height - log.diameter) ** 2) / total_distance)
+
+    return random.choices(log.shapes, weights=probabilities)[0]

@@ -1,14 +1,12 @@
 import constants
 import numpy as np
 import logging
-import math
 import datetime
-import random
 
 import ALNS_tools
-
 import testing_tools
-from logs import Log
+from shapes import Shape
+from logs import Log, select_random_shape_from_log
 
 date = datetime.date.today()
 logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
@@ -24,36 +22,28 @@ def random_destroy(log: Log) -> bool:
     :param log:
     :return:
     """
-    logger.debug("Picked Random Destroy Method")
     successful = False
 
     if len(log.shapes) == 0:
         return successful
 
-    probabilities = []
-    total_distance = sum([math.sqrt((s.width - log.diameter)**2 + (s.height - log.diameter)**2) for s in log.shapes])
+    removed_shape = select_random_shape_from_log(log)
 
-    for shape in log.shapes:
-        probabilities.append(math.sqrt((shape.width - log.diameter)**2 +
-                                       (shape.height - log.diameter)**2) / total_distance)
-
-    removed_shape = random.choices(log.shapes, weights=probabilities)[0]
     logger.debug(f"Removed Shape at ({removed_shape.x}, {removed_shape.y}), "
                  f"({removed_shape.x + removed_shape.width}, {removed_shape.y + removed_shape.height})")
 
     removed_shape.remove_from_log()
     del removed_shape
+    successful = True
     return successful
 
 
 def subspace_destroy(log: Log, shape_types: list) -> bool:
-    logger.debug("Picked Subspace Destroy Method")
     successful = False
     return successful
 
 
 def inefficiency_destroy(log: Log, shape_types: list) -> bool:
-    logger.debug("Picked Inefficiency Destroy Method")
     successful = False
     return successful
 
@@ -67,7 +57,6 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
     :param shape_types:
     :return:
     """
-    logger.debug("Picked RPE Repair Method")
     successful = False
     found_point = False
 
@@ -83,7 +72,7 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
             if not point_in_shape:
                 found_point = True
 
-    logger.debug(f"Attempting Random Point Expansion in Log {log.log_id} at ({p_x: .2f}, {p_y: .2f})")
+    logger.debug(f"Selected point in Log {log.log_id} at ({p_x: .2f}, {p_y: .2f})")
     orientation = ALNS_tools.find_orientation_from_points(centre=log.diameter / 2, x=p_x, y=p_y)
 
     """
@@ -122,10 +111,6 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
     # Check if rectangle is empty
     violating_shapes = ALNS_tools.check_if_rectangle_empty(x_0=left_most_x, x_1=right_most_x,
                                                            y_0=lowest_y, y_1=highest_y, log=log)
-    logging.debug(f"Found {len(violating_shapes)} violating shapes.")
-    for s in violating_shapes:
-        logging.debug(f"Violating Shape at ({s.x: .2f}, {s.y: .2f} with w:{s.width: .2f}, h:{s.height: .2f}) in"
-                      f"x:({left_most_x: .2f}, {right_most_x: .2f}), y:({lowest_y: .2f}, {highest_y: .2f})")
 
     # For all violating shapes we have to make a cut in the plane to ensure the rectangle is clean
     for shape in violating_shapes:
@@ -204,13 +189,44 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
 
 
 def single_extension_repair(log: Log, shape_types: list) -> bool:
-    logger.debug("Picked Single Extension Repair Method")
     successful = False
+
+    shape = select_random_shape_from_log(log)
+    # Select Candidate shape ensuring the new shape is larger in at least one direction
+    candidate_shapes = [s for s in shape_types if (s.height > shape.height and s.width >= shape.width) or
+                        (s.height >= shape.height and s.width > shape.width)]
+
+    if len(candidate_shapes) == 0:
+        return successful
+
+    space_left = log.find_shapes_closest_to_shape(shape, orientation="left")
+    space_right = log.find_shapes_closest_to_shape(shape, orientation="right")
+    space_up = log.find_shapes_closest_to_shape(shape, orientation="up")
+    space_down = log.find_shapes_closest_to_shape(shape, orientation="down")
+
+    logging.debug(f"SER found space around shape at ({shape.x},{shape.y}) - ({shape.width}, {shape.height})"
+                  f"of ({space_left},{space_right},{space_up},{space_down})")
+
+    total_horizontal_space = space_left + space_right + shape.width
+    total_vertical_space = space_up + space_down + shape.height
+
+    final_options = [s for s in candidate_shapes if s.width <= total_horizontal_space
+                     and s.height <= total_vertical_space]
+    if len(final_options) == 0:
+        return successful
+
+    shape_type = max(final_options, key=lambda option: option.width * option.height)
+    replacement_piece = Shape(shape_type=shape_type, x=shape.x - space_left, y=shape.y - space_down)
+    replacement_piece.assign_to_log(log)
+    shape.remove_from_log()
+    logging.debug(f"SER Replaced ({shape.x},{shape.y}) - ({shape.width}, {shape.height}) with"
+                  f"({shape.x - space_left}, {shape.y - space_down}) - ({shape_type.width}, {shape_type.height})"
+                  f"in log {log.log_id}")
+    successful = True
     return successful
 
 
 def buddy_extension_repair(log: Log, shape_types: list) -> bool:
-    logger.debug("Picked Buddy Extension Repair Method")
     successful = False
     return successful
 
@@ -219,12 +235,13 @@ class Method:
     failure_adjust_rate = 0.95
     success_adjust_rate = 0.99
 
-    def __init__(self, name):
+    def __init__(self, name: str, goal: str):
         self.name = name
         self.performance = 100
         self.probability = 1
         self.method_used = False
         self.times_used = 0
+        self.goal = goal
 
     def method_failed(self):
         self.performance = self.performance * self.failure_adjust_rate

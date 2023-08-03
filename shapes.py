@@ -112,7 +112,7 @@ class Shape:
 
         self.text = self.log.ax.text(self.x + constants.rect_text_margin * self.width,
                                      self.y + constants.rect_text_margin * self.height,
-                                     f"{self.width}x{self.height}",
+                                     f"\033[1m {self.shape_id} \033[0m :\n{self.width}x{self.height}",
                                      color="white")
 
     def get_volume(self) -> float:

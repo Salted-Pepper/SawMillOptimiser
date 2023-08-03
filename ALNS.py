@@ -37,9 +37,13 @@ def run_ALNS(logs: list, shape_types: list):
 
     ALNS_tools.calculate_smallest_shape_types(shape_types)
 
-    destroy_methods = [Method(name="RANDOM"), Method(name="SUBSPACE"), Method(name="INEFFICIENCY")]
-    repair_methods = [Method(name="RPE"), Method(name="SER"), Method(name="BER")]
-    tuck_method = Method(name="TUCK")
+    destroy_methods = [Method(name="RANDOM", goal="destroy"),
+                       Method(name="SUBSPACE", goal="destroy"),
+                       Method(name="INEFFICIENCY", goal="destroy")]
+    repair_methods = [Method(name="RPE", goal="repair"),
+                      Method(name="SER", goal="repair"),
+                      Method(name="BER", goal="repair")]
+    tuck_methods = [Method(name="TUCK", goal="other")]
 
     """
     Start ALNS Sequence, select random methods to repair and destroy based on assigned probabilities
@@ -57,6 +61,7 @@ def run_ALNS(logs: list, shape_types: list):
                 repair_method = random.choices(repair_methods,
                                                weights=[method.probability for method in repair_methods],
                                                k=1)[0]
+                logger.debug(f"Select repair method {repair_method.name} with probability {repair_method.probability}")
                 repair_method.used()
                 repair_method.execute(log_new, shape_types)
         else:
@@ -64,12 +69,15 @@ def run_ALNS(logs: list, shape_types: list):
 
                 destroy_method = random.choices(destroy_methods,
                                                 weights=[method.probability for method in destroy_methods], k=1)[0]
+                logger.debug(f"Select destroy method {destroy_method.name} "
+                             f"with probability {destroy_method.probability}")
                 destroy_method.used()
                 destroy_method.execute(log_new, shape_types)
             for i in range(math.floor(repair_degree)):
                 repair_method = random.choices(repair_methods,
                                                weights=[method.probability for method in repair_methods], k=1)[0]
                 repair_method.used()
+                logger.debug(f"Select repair method {repair_method.name} with probability {repair_method.probability}")
                 method_was_successful = repair_method.execute(log_new, shape_types)
                 if method_was_successful:
                     logger.debug(f"Repair method {repair_method.name} was successful")
@@ -95,6 +103,11 @@ def run_ALNS(logs: list, shape_types: list):
         update_method_probability(repair_methods, accept_new_solution)
         update_method_probability(destroy_methods, accept_new_solution)
         iteration += 1
+
+        if iteration % 10 == 0:
+            for method in repair_methods + destroy_methods + tuck_methods:
+                logging.debug(f"Method {method.name} has probability {method.probability} "
+                              f"and performance {method.performance}")
 
         # TODO: Update destroy/repair degree based on temperature
 
