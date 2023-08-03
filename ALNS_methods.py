@@ -32,31 +32,76 @@ def tuck(name: str, log: Log):
     random_shapes = [select_random_shapes_from_log(log, count=number_of_shapes)]
 
     if name.endswith("CENTRE"):
-        # TODO: Shifting into centre direction
-        pass
+        # First see which direction to move the block in, move centre of block to centre of log
+        centre_point = log.diameter
+        for shape in random_shapes:
+            centre_x = shape.x + shape.width / 2
+            centre_y = shape.y + shape.height / 2
+
+            # Shift left is shape is right of centre, otherwise shift right
+            # Can't move both areas at the same time, as there could be rectangles in the corners
+            if centre_x > centre_point:
+                space_x = -log.find_shapes_closest_to_shape(c_shape=shape, orientation="left")
+            else:
+                space_x = log.find_shapes_closest_to_shape(c_shape=shape, orientation="right")
+
+            if centre_y > centre_point:
+                space_y = log.find_shapes_closest_to_shape(c_shape=shape, orientation="down")
+            else:
+                space_y = -log.find_shapes_closest_to_shape(c_shape=shape, orientation="up")
+
+            if ALNS_tools.check_if_rectangle_empty(x_0=shape.x + space_x - constants.saw_kerf,
+                                                   x_1=shape.x + space_x + shape.width + constants.saw_kerf,
+                                                   y_0=shape.y + space_y - constants.saw_kerf,
+                                                   y_1=shape.y + space_y + shape.height + constants.saw_kerf,
+                                                   log=log):
+                logging.debug(f"Moved shape {shape.shape_id} from ({shape.x},{shape.y}) "
+                              f"to ({shape.x + space_x}, {shape.y + space_y}) using CENTRE")
+                shape.x += space_x
+                shape.y += space_y
+
+                successful = True
+            elif abs(space_x) > abs(space_y):
+                logging.debug(f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x + space_x}, {shape.y}) "
+                              f"- did not move y coordinates")
+                shape.x += space_x
+                successful = True
+            else:
+                logging.debug(f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x}, {shape.y + space_y}) "
+                              f"- did not move x coordinates")
+                shape.y += space_y
+                successful = True
+            if shape.x < 0 or shape.y < 0 or shape.x > log.diameter or shape.y > log.diameter:
+                raise ValueError(f"Moved {shape.shape_id} to illegal location {shape.x, shape.y} "
+                                 f"using {space_x}, {space_y} from ({centre_x}, {centre_y})")
+
     elif name.endswith("LEFT"):
         for shape in random_shapes:
-            space_left = shape.find_shapes_closest_to_shape(c_shape=shape, orientation="left")
+            space_left = log.find_shapes_closest_to_shape(c_shape=shape, orientation="left")
             if space_left > 0:
                 successful = True
+                logging.debug(f"Moved shape {shape.shape_id} x: {shape.x} to {shape.x - space_left} using LEFT")
                 shape.x = shape.x - space_left
     elif name.endswith("RIGHT"):
         for shape in random_shapes:
-            space_right = shape.find_shapes_closest_to_shape(c_shape=shape, orientation="right")
+            space_right = log.find_shapes_closest_to_shape(c_shape=shape, orientation="right")
             if space_right > 0:
                 successful = True
+                logging.debug(f"Moved shape {shape.shape_id} x: {shape.x} to {shape.x + space_right} using RIGHT")
                 shape.x = shape.x + space_right
     elif name.endswith("UP"):
         for shape in random_shapes:
-            space_up = shape.find_shapes_closest_to_shape(c_shape=shape, orientation="up")
+            space_up = log.find_shapes_closest_to_shape(c_shape=shape, orientation="up")
             if space_up > 0:
                 successful = True
+                logging.debug(f"Moved shape {shape.shape_id} x: {shape.y} to {shape.y + space_up} using UP")
                 shape.y = shape.y + space_up
     elif name.endswith("DOWN"):
         for shape in random_shapes:
-            space_down = shape.find_shapes_closest_to_shape(c_shape=shape, orientation="down")
+            space_down = log.find_shapes_closest_to_shape(c_shape=shape, orientation="down")
             if space_down > 0:
                 successful = True
+                logging.debug(f"Moved shape {shape.shape_id} x: {shape.y} to {shape.y + space_down} using DOWN")
                 shape.y = shape.y - space_down
 
     return successful
@@ -166,10 +211,10 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
             continue
 
         # There are 4 possible cuts - find the cut that loses the least surface area
-        cut_upper_off = (right_most_x - left_most_x) * ((shape.y-constants.saw_kerf) - lowest_y)
-        cut_lower_off = (right_most_x - left_most_x) * (highest_y - (shape.y+shape.height+constants.saw_kerf))
-        cut_left_off = (right_most_x - (shape.x+shape.width+constants.saw_kerf)) * (highest_y - lowest_y)
-        cut_right_off = ((shape.x-constants.saw_kerf) - left_most_x)
+        cut_upper_off = (right_most_x - left_most_x) * ((shape.y - constants.saw_kerf) - lowest_y)
+        cut_lower_off = (right_most_x - left_most_x) * (highest_y - (shape.y + shape.height + constants.saw_kerf))
+        cut_left_off = (right_most_x - (shape.x + shape.width + constants.saw_kerf)) * (highest_y - lowest_y)
+        cut_right_off = ((shape.x - constants.saw_kerf) - left_most_x)
         cuts = [cut_upper_off, cut_lower_off, cut_left_off, cut_right_off]
 
         # Update Values Based On Selected Optimal Cut
@@ -178,10 +223,10 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
             highest_y = shape.y - constants.saw_kerf
             logging.debug(f"Cutting off top past {highest_y: .2f}")
         elif cut_lower_off == largest_remaining_cut:
-            lowest_y = shape.y + shape.height+constants.saw_kerf
+            lowest_y = shape.y + shape.height + constants.saw_kerf
             logging.debug(f"Cutting off lower under {lowest_y: .2f}")
         elif cut_left_off == largest_remaining_cut:
-            left_most_x = shape.x + shape.width+constants.saw_kerf
+            left_most_x = shape.x + shape.width + constants.saw_kerf
             logging.debug(f"Cutting off left of {left_most_x: .2f}")
         else:
             right_most_x = shape.x - constants.saw_kerf
@@ -249,8 +294,9 @@ def single_extension_repair(log: Log, shape_types: list) -> bool:
     space_up = log.find_shapes_closest_to_shape(shape, orientation="up")
     space_down = log.find_shapes_closest_to_shape(shape, orientation="down")
 
-    logging.debug(f"SER found space around shape at ({shape.x},{shape.y}) - ({shape.width}, {shape.height})"
-                  f"of ({space_left},{space_right},{space_up},{space_down})")
+    logging.debug(f"SER found space around shape {shape.shape_id} at ({shape.x :.2f},{shape.y: .2f}) "
+                  f"- ({shape.width}, {shape.height})"
+                  f"of ({space_left: .2f},{space_right: .2f},{space_up: .2f},{space_down: .2f})")
 
     total_horizontal_space = space_left + space_right + shape.width
     total_vertical_space = space_up + space_down + shape.height
@@ -263,10 +309,10 @@ def single_extension_repair(log: Log, shape_types: list) -> bool:
     shape_type = max(final_options, key=lambda option: option.width * option.height)
     replacement_piece = Shape(shape_type=shape_type, x=shape.x - space_left, y=shape.y - space_down)
     replacement_piece.assign_to_log(log)
-    shape.remove_from_log()
     logging.debug(f"SER Replaced ({shape.x},{shape.y}) - ({shape.width}, {shape.height}) with"
                   f"({shape.x - space_left}, {shape.y - space_down}) - ({shape_type.width}, {shape_type.height})"
                   f"in log {log.log_id}")
+    shape.remove_from_log()
     successful = True
     return successful
 
@@ -311,8 +357,6 @@ class Method:
                 succeeded = single_extension_repair(log, shape_types)
             elif self.name == "BER":
                 succeeded = buddy_extension_repair(log, shape_types)
-
-
             else:
                 raise ValueError(f"ALNS Method {self.name} Not Implemented")
             if succeeded:

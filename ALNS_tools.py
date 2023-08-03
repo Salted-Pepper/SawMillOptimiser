@@ -235,7 +235,7 @@ def check_if_rectangle_empty(x_0: float, x_1: float, y_0: float, y_1: float, log
     violating_shapes = []
     for x_step in x_steps:
         for y_step in y_steps:
-            logger.debug(f"Checking ({x_step: .2f}, {y_step: .2f})")
+            # logger.debug(f"Checking ({x_step: .2f}, {y_step: .2f})")
             for shape in log.shapes:
                 if shape.check_if_point_in_shape(x_step, y_step):
                     violating_shapes.append(shape)

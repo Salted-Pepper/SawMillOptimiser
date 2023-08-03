@@ -75,7 +75,6 @@ def run_ALNS(logs: list, shape_types: list):
                 tuck_method.execute(log_new, shape_types)
         else:
             for i in range(math.floor(destroy_degree)):
-
                 destroy_method = random.choices(destroy_methods,
                                                 weights=[method.probability for method in destroy_methods], k=1)[0]
                 logger.debug(f"Select destroy method {destroy_method.name} "
@@ -92,6 +91,9 @@ def run_ALNS(logs: list, shape_types: list):
                     logger.debug(f"Repair method {repair_method.name} was successful")
                 else:
                     logger.debug(f"Repair method {repair_method.name} was unsuccessful")
+                tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
+                tuck_method.used()
+                tuck_method.execute(log_new, shape_types)
 
         ALNS_tools.update_log_scores([log_new])
         accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log_new, log, temperature)
@@ -119,6 +121,9 @@ def run_ALNS(logs: list, shape_types: list):
                               f"and performance {method.performance}")
 
         # TODO: Update destroy/repair degree based on temperature
+
+    for method in repair_methods + destroy_methods + tuck_methods:
+        logger.debug(f"Method {method.name} was called {method.times_used} times.")
 
     return solution_quality_df
 
@@ -278,7 +283,7 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                 shapes.append(Shape(shape_type=shape_type, x=x, y=y))
                 logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                              f"h:{shape_type.height} at ({x}, {y})")
-                x += shape_type.width + constants.saw_kerf
+                x += shape_type.width + constants.saw_kerf + constants.safety_margin
 
         y_plus = (log.diameter + (h + constants.saw_kerf)) / 2 + h_n
         x_left, x_right = log.calculate_edge_positions_on_circle(z=y_plus)
@@ -293,11 +298,13 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
             shape_type = shape_types[shape_id]
 
             for i in range(quantity):
-                shapes.append(Shape(shape_type=shape_type, x=x, y=y_north))
-                shapes.append(Shape(shape_type=shape_type, x=x, y=y_south + (h_n - shape_type.height)))
+                shapes.append(Shape(shape_type=shape_type, x=x,
+                                    y=y_north))
+                shapes.append(Shape(shape_type=shape_type, x=x,
+                                    y=y_south + (h_n - shape_type.height)))
                 logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                              f"h:{shape_type.height} at ({x}, {y_south}) and ({x}, {y_north})")
-                x += shape_type.width + constants.saw_kerf
+                x += shape_type.width + constants.saw_kerf + constants.safety_margin
 
         shapes = create_corner_solution(shapes, log, shape_types, h, h_n, y_north, "NW")
         shapes = create_corner_solution(shapes, log, shape_types, h, h_n, y_north, "NE")
@@ -390,9 +397,9 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
         x_maximal = best_corner_solution[2][2]
 
         if orientation == "NW":
-            x = x_maximal + constants.saw_kerf
+            x = x_maximal + constants.saw_kerf + constants.safety_margin
         elif orientation == "NE":
-            x = x_minimal
+            x = x_minimal - constants.safety_margin
         else:
             raise NotImplementedError("Orientation not found")
 
@@ -404,10 +411,11 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
             for i in range(quantity):
 
                 if orientation == "NW":
-                    x -= shape_type.width + constants.saw_kerf
-                    shapes.append(Shape(shape_type=shape_type, x=x, y=y_north))
+                    x -= shape_type.width + constants.saw_kerf + constants.safety_margin
+                    shapes.append(Shape(shape_type=shape_type, x=x, y=y_north + constants.safety_margin))
                     shapes.append(Shape(shape_type=shape_type, x=x,
-                                        y=(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf))
+                                        y=(log.diameter - h) / 2 - shape_type.height
+                                          - constants.saw_kerf - constants.safety_margin))
                     logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                                  f"h:{shape_type.height} at ({x}, "
                                  f"{(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf}) "
@@ -417,14 +425,15 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
 
                 elif orientation == "NE":
 
-                    shapes.append(Shape(shape_type=shape_type, x=x, y=y_north))
+                    shapes.append(Shape(shape_type=shape_type, x=x, y=y_north + constants.safety_margin))
                     shapes.append(Shape(shape_type=shape_type, x=x,
-                                        y=(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf))
+                                        y=(log.diameter - h) / 2 - shape_type.height
+                                          - constants.saw_kerf - constants.safety_margin))
                     logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                                  f"h:{shape_type.height} at ({x}, "
                                  f"{(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf}) "
                                  f"and ({x}, {y_north})")
-                    x += shape_type.width + constants.saw_kerf
+                    x += shape_type.width + constants.saw_kerf + constants.safety_margin
                     if x > x_maximal:
                         raise ValueError(f"x exceeds maximum value for sub-rectangle. x is {x}, x_max is {x_maximal}")
     return shapes
@@ -440,7 +449,7 @@ def create_edge_solutions(shapes: list, log: Log, shape_types: list, h: float, h
     :param h_n:
     :return:
     """
-    min_y = (log.diameter + h) / 2 + h_n + 2 * constants.saw_kerf
+    min_y = (log.diameter + h) / 2 + h_n + 2 * (constants.saw_kerf + constants.safety_margin)
     max_y = log.diameter
     max_height = max_y - min_y
 
@@ -507,11 +516,12 @@ def create_edge_solutions(shapes: list, log: Log, shape_types: list, h: float, h
             for i in range(quantity):
                 shapes.append(Shape(shape_type=shape_type, x=x, y=min_y))
                 shapes.append(Shape(shape_type=shape_type, x=x,
-                                    y=(log.diameter - h) / 2 - h_n - shape_type.height - 2 * constants.saw_kerf))
+                                    y=(log.diameter - h) / 2 - h_n - shape_type.height -
+                                      2 * (constants.saw_kerf + constants.safety_margin)))
                 logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                              f"h:{shape_type.height} at ({x}, "
                              f"{(log.diameter - h) / 2 - h_n - shape_type.height - constants.saw_kerf})"
                              f"and ({x}, {min_y})")
-                x += shape_type.width + constants.saw_kerf
+                x += shape_type.width + constants.saw_kerf + constants.safety_margin
 
     return shapes

@@ -1,10 +1,18 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import logging
+import datetime
 
 import constants
 
 shape_id = 0
 type_id = 0
+
+date = datetime.date.today()
+logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%H:%M:%S")
+logger = logging.getLogger("Shapes")
+logger.setLevel(logging.DEBUG)
 
 
 class ShapeType:
@@ -48,6 +56,8 @@ class Shape:
         self.rect = None
         self.rect_kerf = None
         self.text = None
+
+        logger.debug(f"Created Shape {self.shape_id - 1} at ({self.x}, {self.y}) ")
 
     def set_location(self, x=None, y=None) -> None:
         """
