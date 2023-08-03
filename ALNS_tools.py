@@ -5,6 +5,8 @@ import numpy as np
 import random
 import datetime
 
+import matplotlib.pyplot as plt
+
 from ortools.linear_solver import pywraplp
 
 import constants

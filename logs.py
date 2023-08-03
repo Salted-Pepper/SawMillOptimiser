@@ -6,6 +6,7 @@ from shapes import Shape
 import datetime
 import math
 import random
+import numpy as np
 import matplotlib.pyplot as plt
 
 date = datetime.date.today()
@@ -54,8 +55,8 @@ class Log:
     def update_plot_title(self) -> None:
         self.ax.set_title(f"id: {self.log_id}, "
                           r"$d_i$:" + f"{self.diameter}, "
-                                      r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
-                                                     r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}")
+                          r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
+                          r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}")
 
     def calculate_efficiency(self) -> float:
         self.efficiency = self.volume_used / self.volume
@@ -106,6 +107,7 @@ class Log:
     def remove_shape(self, shape: Shape) -> None:
         try:
             self.shapes.remove(shape)
+            self.volume_used -= shape.get_volume()
             self.calculate_efficiency()
         except ValueError:
             print(f"Was not able to remove shape {shape.shape_id} from log {self.log_id}.")
@@ -140,32 +142,35 @@ class Log:
         if orientation == "left":
             # Check if shapes would intersect if expanded till edge
             for shape in other_shapes:
-                if (shape.y + shape.height + constants.saw_kerf < c_shape.y or
+                if not (shape.y + shape.height + constants.saw_kerf < c_shape.y or
                         shape.y > c_shape.y + c_shape.height + constants.saw_kerf):
                     if c_shape.x - (shape.x + shape.width + constants.saw_kerf) < min_space:
                         min_space = c_shape.x - (shape.x + shape.width + constants.saw_kerf)
         elif orientation == "right":
             for shape in other_shapes:
-                if (shape.y + shape.height + constants.saw_kerf < c_shape.y or
+                if not (shape.y + shape.height + constants.saw_kerf < c_shape.y or
                         shape.y > c_shape.y + c_shape.height + constants.saw_kerf):
                     if shape.x - (c_shape.x + c_shape.width + constants.saw_kerf) < min_space:
                         min_space = shape.x - (c_shape.x + c_shape.width + constants.saw_kerf)
         elif orientation == "up":
             for shape in other_shapes:
-                if (shape.x + shape.width + constants.saw_kerf < c_shape.x or
+                if not (shape.x + shape.width + constants.saw_kerf < c_shape.x or
                         shape.x > c_shape.x + c_shape.width + constants.saw_kerf):
                     if shape.y - (c_shape.y + c_shape.height + constants.saw_kerf) < min_space:
                         min_space = shape.y - (c_shape.y + c_shape.height + constants.saw_kerf) < min_space
         elif orientation == "down":
             for shape in other_shapes:
-                if (shape.x + shape.width + constants.saw_kerf < c_shape.x or
+                if not (shape.x + shape.width + constants.saw_kerf < c_shape.x or
                         shape.x > c_shape.x + c_shape.width + constants.saw_kerf):
                     if c_shape.y - (shape.y + shape.height + constants.saw_kerf) < min_space:
                         min_space = c_shape.y - (shape.y + shape.height + constants.saw_kerf)
+        else:
+            logger.error(f"Unknown Orientation {orientation}")
+
         if min_space < 0:
             logger.error(f"Found minimum space between pieces of {min_space} for shape at "
-                         f"({c_shape.x}, {c_shape.y}) with (w,h)=({c_shape.width},{c_shape.height}) in log"
-                         f"{self.log_id}")
+                         f"({c_shape.x}, {c_shape.y}) with (w,h)=({c_shape.width},{c_shape.height}) "
+                         f"in log {self.log_id}, with orientation {orientation}")
         return min_space
 
 
@@ -190,7 +195,14 @@ def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
         return False
 
 
-def select_random_shape_from_log(log):
+def select_random_shapes_from_log(log: Log, count: int = 1) -> Shape or list:
+    """
+    Returns a random shape from a log.
+    (Unless
+    :param log:
+    :param count:
+    :return:
+    """
     probabilities = []
     total_distance = sum(
         [math.sqrt((s.width - log.diameter) ** 2 + (s.height - log.diameter) ** 2) for s in log.shapes])
@@ -198,5 +210,7 @@ def select_random_shape_from_log(log):
     for shape in log.shapes:
         probabilities.append(math.sqrt((shape.width - log.diameter) ** 2 +
                                        (shape.height - log.diameter) ** 2) / total_distance)
-
-    return random.choices(log.shapes, weights=probabilities)[0]
+    if count == 1:
+        return random.choices(log.shapes, weights=probabilities)[0]
+    else:
+        return np.random.choice(log.shapes, p=probabilities, replace=False)

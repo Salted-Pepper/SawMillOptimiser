@@ -29,7 +29,7 @@ def run_ALNS(logs: list, shape_types: list):
     iteration = 1
     temperature = constants.starting_temperature
     destroy_degree = 2
-    repair_degree = 5
+    repair_degree = 10
 
     """
     Initialize methods and create pre-emptive calculations for parameters that will be re-used
@@ -43,7 +43,12 @@ def run_ALNS(logs: list, shape_types: list):
     repair_methods = [Method(name="RPE", goal="repair"),
                       Method(name="SER", goal="repair"),
                       Method(name="BER", goal="repair")]
-    tuck_methods = [Method(name="TUCK", goal="other")]
+    tuck_methods = [Method(name="TUCK-CENTRE", goal="other"),
+                    Method(name="TUCK-LEFT", goal="other"),
+                    Method(name="TUCK-RIGHT", goal="other"),
+                    Method(name="TUCK-UP", goal="other"),
+                    Method(name="TUCK-DOWN", goal="other")]
+    tuck_probabilities = [0.8, 0.05, 0.05, 0.05, 0.05]
 
     """
     Start ALNS Sequence, select random methods to repair and destroy based on assigned probabilities
@@ -64,6 +69,10 @@ def run_ALNS(logs: list, shape_types: list):
                 logger.debug(f"Select repair method {repair_method.name} with probability {repair_method.probability}")
                 repair_method.used()
                 repair_method.execute(log_new, shape_types)
+
+                tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
+                tuck_method.used()
+                tuck_method.execute(log_new, shape_types)
         else:
             for i in range(math.floor(destroy_degree)):
 

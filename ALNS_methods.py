@@ -1,3 +1,5 @@
+import random
+
 import constants
 import numpy as np
 import logging
@@ -6,13 +8,58 @@ import datetime
 import ALNS_tools
 import testing_tools
 from shapes import Shape
-from logs import Log, select_random_shape_from_log
+from logs import Log, select_random_shapes_from_log
 
 date = datetime.date.today()
 logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%H:%M:%S")
 logger = logging.getLogger("ALNS_Methods")
 logger.setLevel(logging.DEBUG)
+
+
+def tuck(name: str, log: Log):
+    """
+    Selects a random number of shapes in the log.
+    Tries to move all shapes as much as possible in a certain direction.
+    (Starting from the direction they are shifted in)
+
+    For the centre direction it tries to shift towards the centre
+    :return:
+    """
+    successful = False
+
+    number_of_shapes = random.randint(0, len(log.shapes))
+    random_shapes = [select_random_shapes_from_log(log, count=number_of_shapes)]
+
+    if name.endswith("CENTRE"):
+        # TODO: Shifting into centre direction
+        pass
+    elif name.endswith("LEFT"):
+        for shape in random_shapes:
+            space_left = shape.find_shapes_closest_to_shape(c_shape=shape, orientation="left")
+            if space_left > 0:
+                successful = True
+                shape.x = shape.x - space_left
+    elif name.endswith("RIGHT"):
+        for shape in random_shapes:
+            space_right = shape.find_shapes_closest_to_shape(c_shape=shape, orientation="right")
+            if space_right > 0:
+                successful = True
+                shape.x = shape.x + space_right
+    elif name.endswith("UP"):
+        for shape in random_shapes:
+            space_up = shape.find_shapes_closest_to_shape(c_shape=shape, orientation="up")
+            if space_up > 0:
+                successful = True
+                shape.y = shape.y + space_up
+    elif name.endswith("DOWN"):
+        for shape in random_shapes:
+            space_down = shape.find_shapes_closest_to_shape(c_shape=shape, orientation="down")
+            if space_down > 0:
+                successful = True
+                shape.y = shape.y - space_down
+
+    return successful
 
 
 def random_destroy(log: Log) -> bool:
@@ -27,7 +74,7 @@ def random_destroy(log: Log) -> bool:
     if len(log.shapes) == 0:
         return successful
 
-    removed_shape = select_random_shape_from_log(log)
+    removed_shape = select_random_shapes_from_log(log)
 
     logger.debug(f"Removed Shape at ({removed_shape.x}, {removed_shape.y}), "
                  f"({removed_shape.x + removed_shape.width}, {removed_shape.y + removed_shape.height})")
@@ -73,8 +120,6 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
                 found_point = True
 
     logger.debug(f"Selected point in Log {log.log_id} at ({p_x: .2f}, {p_y: .2f})")
-    orientation = ALNS_tools.find_orientation_from_points(centre=log.diameter / 2, x=p_x, y=p_y)
-
     """
     Feasible point has been found, attempt to expand towards the center point, and find first collision
     Here we use the minimum width shape and the minimum height shape to ensure that we do not have to check every point.
@@ -191,7 +236,7 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
 def single_extension_repair(log: Log, shape_types: list) -> bool:
     successful = False
 
-    shape = select_random_shape_from_log(log)
+    shape = select_random_shapes_from_log(log)
     # Select Candidate shape ensuring the new shape is larger in at least one direction
     candidate_shapes = [s for s in shape_types if (s.height > shape.height and s.width >= shape.width) or
                         (s.height >= shape.height and s.width > shape.width)]
@@ -252,7 +297,9 @@ class Method:
     def execute(self, log, shape_types: list) -> bool:
         attempts = 0
         while attempts < constants.repair_max_attempts:
-            if self.name == "RANDOM":
+            if self.name.startswith("TUCK"):
+                succeeded = tuck(self.name, log)
+            elif self.name == "RANDOM":
                 succeeded = random_destroy(log)
             elif self.name == "SUBSPACE":
                 succeeded = subspace_destroy(log, shape_types)
@@ -264,6 +311,8 @@ class Method:
                 succeeded = single_extension_repair(log, shape_types)
             elif self.name == "BER":
                 succeeded = buddy_extension_repair(log, shape_types)
+
+
             else:
                 raise ValueError(f"ALNS Method {self.name} Not Implemented")
             if succeeded:
