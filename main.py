@@ -71,7 +71,7 @@ if __name__ == '__main__':
     solution_quality_df = ALNS.run_ALNS(logs=logs, shape_types=shape_types)
 
     for log in logs:
-        log.update_plot_title()
+        log.update_plot()
         log.show_plot()
 
     ALNS_tools.check_feasibility(list_of_logs=logs)

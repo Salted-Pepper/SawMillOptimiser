@@ -39,20 +39,27 @@ class Log:
         self.fig = None
         self.ax = None
         self.shapes = []
+        self.patches = []
         self.plot_log()
 
     def plot_log(self) -> None:
-        fig, ax = plt.subplots(figsize=(9, 9))
-        circle = plt.Circle((self.diameter / 2, self.diameter / 2), self.diameter / 2,
-                            color='saddlebrown', fill=False)
-        ax.add_patch(circle)
+        fig = plt.figure(figsize=(9, 9))
+        ax = fig.add_subplot(111)
+
         ax.set_xlim(0, 1.1 * self.diameter)
         ax.set_ylim(0, 1.1 * self.diameter)
 
         self.fig = fig
         self.ax = ax
 
-    def update_plot_title(self) -> None:
+    def update_plot(self) -> None:
+        for patch in self.patches:
+            patch.remove()
+        for shape in self.shapes:
+            self.patches.extend(shape.add_rect_to_plot())
+        circle = plt.Circle((self.diameter / 2, self.diameter / 2), self.diameter / 2,
+                            color='saddlebrown', fill=False)
+        self.ax.add_patch(circle)
         self.ax.set_title(f"id: {self.log_id}, "
                           r"$d_i$:" + f"{self.diameter}, "
                                       r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
@@ -66,8 +73,8 @@ class Log:
         return self.fig, self.ax
 
     def show_plot(self) -> None:
-        self.update_plot_title()
-        date = datetime.datetime.now()
+        global date
+        self.update_plot()
         self.fig.savefig(f"plots/log_{self.log_id}_{date.strftime('%d_%m_%Y_%H_%M_%S')}.png")
         self.fig.show()
 
@@ -98,25 +105,26 @@ class Log:
         return True
 
     def add_shape(self, shape: Shape) -> None:
+        logger.debug(f"Adding shape {shape.shape_id} to log {self.log_id}.")
         self.shapes.append(shape)
         self.volume_used += shape.get_volume()
         self.calculate_efficiency()
-        shape.add_rect_to_plot()
 
     def calculate_sawdust_created(self) -> float:
         # TODO: Create function to calculate sawdust (circumference - shared circumference)
         return -1 / self.volume
 
     def remove_shape(self, shape: Shape) -> None:
+        logger.debug(f"Removing shape {shape.shape_id} from log {self.log_id}.")
         try:
             self.shapes.remove(shape)
             self.volume_used -= shape.get_volume()
             self.calculate_efficiency()
-        except ValueError:
-            print(f"Was not able to remove shape {shape.shape_id} from log {self.log_id}.")
+        except ValueError as e:
+            print(f"Was not able to remove shape {shape.shape_id} from log {self.log_id}."
+                  f"Error {e}")
 
     def check_if_point_in_log(self, x: float, y: float) -> bool:
-
         x_min, x_max = self.calculate_edge_positions_on_circle(y)
         y_min, y_max = self.calculate_edge_positions_on_circle(x)
 
@@ -268,7 +276,6 @@ def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
 def select_random_shapes_from_log(log: Log, count: int = 1) -> Shape or list:
     """
     Returns a random shape from a log.
-    (Unless
     :param log:
     :param count:
     :return:

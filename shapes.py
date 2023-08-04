@@ -3,7 +3,6 @@ import matplotlib.patches as mpatches
 import matplotlib.colors as mcolors
 import logging
 import datetime
-
 import constants
 
 shape_id = 0
@@ -91,7 +90,7 @@ class Shape:
         self.width = self.height
         self.height = width
 
-    def add_rect_to_plot(self):
+    def add_rect_to_plot(self) -> list:
 
         if self.log is None:
             print("Piece not attributed to log, not able to show figure")
@@ -111,7 +110,7 @@ class Shape:
         else:
             self.rect = mpatches.Rectangle((self.x, self.y),
                                            self.width, self.height,
-                                           facecolor=mcolors.to_rgb(self.colour) + (0.5,))
+                                           facecolor=(0, 1, 0, 0.5))
 
         self.rect_kerf = mpatches.Rectangle((self.x - constants.saw_kerf,
                                              self.y - constants.saw_kerf),
@@ -125,6 +124,7 @@ class Shape:
                                      self.y + constants.rect_text_margin * self.height,
                                      r"$\bf{{{i}}}$".format(i=self.shape_id) + f":\n{self.width}x{self.height}",
                                      color="white")
+        return [self.rect, self.rect_kerf, self.text]
 
     def get_volume(self) -> float:
         return self.width * self.height
@@ -132,23 +132,14 @@ class Shape:
     def assign_to_log(self, log):
         self.log = log
         self.log.add_shape(self)
+        self.add_rect_to_plot()
 
     def remove_from_log(self):
+        logger.debug(f"Removing shape {self.shape_id} from log {self.log.log_id}")
         self.log.remove_shape(self)
-        self.remove_from_plot()
         self.log = None
         self.x = None
         self.y = None
-
-    def remove_from_plot(self):
-        if self.rect is not None:
-            self.rect.remove()
-            self.text.remove()
-            self.rect_kerf.remove()
-
-            self.rect = None
-            self.text = None
-            self.rect_kerf = None
 
     def check_if_point_in_shape(self, x: float, y: float):
         if (self.x - constants.saw_kerf <= x <= self.x + self.width + constants.saw_kerf

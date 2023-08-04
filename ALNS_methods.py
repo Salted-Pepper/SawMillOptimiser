@@ -59,26 +59,25 @@ def tuck(name: str, log: Log):
                                                    y_0=shape.y + space_y,
                                                    y_1=shape.y + space_y + shape.height,
                                                    log=log):
-                logger.debug(f"Moved shape {shape.shape_id} from ({shape.x},{shape.y}) "
-                             f"to ({shape.x + space_x}, {shape.y + space_y}) using CENTRE")
-                shape.x += space_x
-                shape.y += space_y
 
                 if space_x != 0 or space_y != 0:
+                    logger.debug(f"Moved shape {shape.shape_id} from ({shape.x},{shape.y}) "
+                                 f"to ({shape.x + space_x}, {shape.y + space_y}) using CENTRE")
+                    shape.x += space_x
+                    shape.y += space_y
                     successful = True
             elif abs(space_x) > abs(space_y):
+                successful = True
                 logger.debug(
                     f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x + space_x}, {shape.y}) "
                     f"- did not move y coordinates")
                 shape.x += space_x
-                if space_x != 0 or space_y != 0:
-                    successful = True
             else:
-                logger.debug(
-                    f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x}, {shape.y + space_y}) "
-                    f"- did not move x coordinates")
-                shape.y += space_y
                 if space_x != 0 or space_y != 0:
+                    logger.debug(
+                        f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x}, {shape.y + space_y}) "
+                        f"- did not move x coordinates")
+                    shape.y += space_y
                     successful = True
             if shape.x < 0 or shape.y < 0 or shape.x > log.diameter or shape.y > log.diameter:
                 raise ValueError(f"Moved {shape.shape_id} to illegal location {shape.x, shape.y} "
@@ -313,19 +312,25 @@ def single_extension_repair(log: Log, shape_types: list) -> bool:
                  f"- ({shape.width}, {shape.height})"
                  f"of ({space_left: .2f},{space_right: .2f},{space_up: .2f},{space_down: .2f})")
 
+    # Now expand in either horizontal or vertical direction
     total_horizontal_space = space_left + space_right + shape.width
     total_vertical_space = space_up + space_down + shape.height
-
-    final_options = [s for s in candidate_shapes if s.width <= total_horizontal_space
+    wider_pieces = [s for s in candidate_shapes if s.width <= total_horizontal_space
+                    and s.height == shape.height]
+    higher_pieces = [s for s in candidate_shapes if s.width == shape.width
                      and s.height <= total_vertical_space]
-    if len(final_options) == 0:
+    if len(wider_pieces) == 0 == len(higher_pieces):
         return successful
 
-    shape_type = max(final_options, key=lambda option: option.width * option.height)
-    replacement_piece = Shape(shape_type=shape_type, x=shape.x - space_left, y=shape.y - space_down)
+    shape_type = max(wider_pieces + higher_pieces, key=lambda option: option.width * option.height)
+    # Either the new piece is higher, and it stays at same x, or it's wider and stays at same y
+    if shape_type.width == shape.width:
+        replacement_piece = Shape(shape_type=shape_type, x=shape.x, y=shape.y - space_down)
+    else:
+        replacement_piece = Shape(shape_type=shape_type, x=shape.x - space_left, y=shape.y)
     replacement_piece.assign_to_log(log)
-    logger.debug(f"SER Replaced ({shape.x},{shape.y}) - ({shape.width}, {shape.height}) with"
-                 f"({shape.x - space_left}, {shape.y - space_down}) - ({shape_type.width}, {shape_type.height})"
+    logger.debug(f"SER Replaced {shape.shape_id}: ({shape.x},{shape.y}) - ({shape.width}, {shape.height}) with "
+                 f"({shape.x - space_left}, {shape.y - space_down}) - ({shape_type.width}, {shape_type.height}) "
                  f"in log {log.log_id}")
     shape.remove_from_log()
     successful = True
@@ -394,7 +399,7 @@ def update_method_probability(methods: list, updated):
     for method in methods:
         if updated and method.used:
             method.performance = method.performance * constants.method_sensitivity_acceptance
-            method.used = False
+            method.method_used = False
         elif method.used:
             method.performance = method.performance * constants.method_sensitivity_rejection
 

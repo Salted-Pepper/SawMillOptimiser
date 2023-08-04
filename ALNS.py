@@ -58,7 +58,7 @@ def run_ALNS(logs: list, shape_types: list):
         log = ALNS_tools.select_log(logs)
         logger.debug(f"Select log {log.log_id}.")
         # TODO: Invoke copy here to ensure changes do not always apply
-        log_new = log
+        log_new = copy.deepcopy(log)
 
         # Only run repair methods for the first couple of iterations to fill up empty space in initial solution
         if iteration < constants.fill_up_iterations:
