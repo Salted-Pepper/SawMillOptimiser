@@ -57,7 +57,7 @@ class Shape:
         self.rect_kerf = None
         self.text = None
 
-        logger.debug(f"Created Shape {self.shape_id - 1} at ({self.x}, {self.y}) ")
+        logger.debug(f"Created Shape {self.shape_id} at ({self.x}, {self.y}) ")
 
     def set_location(self, x=None, y=None) -> None:
         """

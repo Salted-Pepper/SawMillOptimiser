@@ -141,13 +141,12 @@ class Log:
         :return:
         """
         other_shapes = [s for s in self.shapes if s.shape_id != c_shape.shape_id]
-        # TODO: Fix closest shape calculation
+        # TODO: Check closest shape calculation
         if orientation == "left":
             # Set log boundaries for the shape
             min_space_bot, _ = c_shape.log.calculate_edge_positions_on_circle(c_shape.y)
             min_space_top, _ = c_shape.log.calculate_edge_positions_on_circle((c_shape.y + c_shape.height))
             min_space = c_shape.x - max(min_space_bot, min_space_top)
-            print(f"Left - Min space is {min_space}, {min_space_bot}, {min_space_top}, c: {c_shape.x},{c_shape.y}")
             other_shapes = [s for s in other_shapes if s.x + s.width <= c_shape.x]
             for s in other_shapes:
                 print(f"Considering {s.shape_id}")
@@ -158,24 +157,20 @@ class Log:
                     if c_shape.x - (shape.x + shape.width + constants.saw_kerf) < min_space:
                         min_space = c_shape.x - (shape.x + shape.width + constants.saw_kerf)
                         if min_space < -constants.error_margin:
-                            print(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
+                            logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
                                   f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
                             raise ValueError
-                    else:
-                        min_x_left_top, _ = self.calculate_edge_positions_on_circle(shape.y + shape.height)
-                        min_x_left_bot, _ = self.calculate_edge_positions_on_circle(shape.y)
-                        minimum_x_left = max(min_x_left_top, min_x_left_bot)
-                        if c_shape.x - minimum_x_left < min_space:
-                            min_space = c_shape.x - minimum_x_left
-                        if min_space < -constants.error_margin:
-                            print(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
-                                  f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
-                            raise ValueError
+            # Check Log Boundaries
+            min_x_left_top, _ = self.calculate_edge_positions_on_circle(c_shape.y + c_shape.height)
+            min_x_left_bot, _ = self.calculate_edge_positions_on_circle(c_shape.y)
+            minimum_x_left = max(min_x_left_top, min_x_left_bot)
+            if c_shape.x - minimum_x_left < min_space:
+                min_space = c_shape.x - minimum_x_left
+
         elif orientation == "right":
             _, max_space_bot = c_shape.log.calculate_edge_positions_on_circle(c_shape.y)
             _, max_space_top = c_shape.log.calculate_edge_positions_on_circle((c_shape.y + c_shape.height))
             min_space = min(max_space_bot, max_space_top) - (c_shape.x + c_shape.width)
-            print(f"Right - Max space is {min_space}, {max_space_bot}, {max_space_top}, c: {c_shape.x},{c_shape.y}")
             other_shapes = [s for s in other_shapes if s.x >= c_shape.x + c_shape.width]
             for shape in other_shapes:
                 if not (shape.y + shape.height + constants.saw_kerf <= c_shape.y or
@@ -183,24 +178,20 @@ class Log:
                     if shape.x - (c_shape.x + c_shape.width + constants.saw_kerf) < min_space:
                         min_space = shape.x - (c_shape.x + c_shape.width + constants.saw_kerf)
                         if min_space < -constants.error_margin:
-                            print(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
+                            logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
                                   f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
                             raise ValueError
-                    else:
-                        _, max_x_right_top = self.calculate_edge_positions_on_circle(shape.y + shape.height)
-                        _, max_x_right_bot = self.calculate_edge_positions_on_circle(shape.y)
-                        maximum_x_right = min(max_x_right_top, max_x_right_bot)
-                        if maximum_x_right - (c_shape.x + c_shape.width) < min_space:
-                            min_space = maximum_x_right - c_shape.x
-                        if min_space < -constants.error_margin:
-                            print(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
-                                  f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
-                            raise ValueError
+            # Check Log Boundaries
+            _, max_x_right_top = self.calculate_edge_positions_on_circle(c_shape.y + c_shape.height)
+            _, max_x_right_bot = self.calculate_edge_positions_on_circle(c_shape.y)
+            maximum_x_right = min(max_x_right_top, max_x_right_bot)
+            if maximum_x_right - (c_shape.x + c_shape.width) < min_space:
+                min_space = maximum_x_right - c_shape.x
+
         elif orientation == "up":
             _, max_space_left = c_shape.log.calculate_edge_positions_on_circle(c_shape.x)
             _, max_space_right = c_shape.log.calculate_edge_positions_on_circle((c_shape.x + c_shape.width))
             min_space = min(max_space_left, max_space_right) - (c_shape.y + c_shape.height)
-            print(f"Up - Max space is {min_space}, {max_space_left}, {max_space_right}, c: {c_shape.x},{c_shape.y}")
             other_shapes = [s for s in other_shapes if s.y >= c_shape.y + c_shape.height]
             for shape in other_shapes:
                 if not (shape.x + shape.width + constants.saw_kerf <= c_shape.x or
@@ -208,22 +199,22 @@ class Log:
                     if shape.y - (c_shape.y + c_shape.height + constants.saw_kerf) < min_space:
                         min_space = shape.y - (c_shape.y + c_shape.height + constants.saw_kerf)
                         if min_space < -constants.error_margin:
-                            print(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
+                            logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
                                   f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
                             raise ValueError
-                    else:
-                        _, max_y_top_left = self.calculate_edge_positions_on_circle(shape.x)
-                        _, max_y_top_right = self.calculate_edge_positions_on_circle(shape.x + shape.width)
-                        maximum_y_top = min(max_y_top_left, max_y_top_right)
-                        if maximum_y_top - (c_shape.y + c_shape.height) < min_space:
-                            min_space = maximum_y_top - (c_shape.y + c_shape.height)
-                            if min_space < 0:
-                                raise ValueError
+            # Check Log Boundaries
+            _, max_y_top_left = self.calculate_edge_positions_on_circle(c_shape.x)
+            _, max_y_top_right = self.calculate_edge_positions_on_circle(c_shape.x + c_shape.width)
+            maximum_y_top = min(max_y_top_left, max_y_top_right)
+            if maximum_y_top - (c_shape.y + c_shape.height) < min_space:
+                min_space = maximum_y_top - (c_shape.y + c_shape.height)
+                if min_space < 0:
+                    raise ValueError
+
         elif orientation == "down":
             min_space_left, _ = c_shape.log.calculate_edge_positions_on_circle(c_shape.x)
             min_space_right, _ = c_shape.log.calculate_edge_positions_on_circle((c_shape.x + c_shape.width))
             min_space = c_shape.y - max(min_space_left, min_space_right)
-            print(f"Down - Max space is {min_space}, {min_space_left}, {min_space_right}, c: {c_shape.x},{c_shape.y}")
             other_shapes = [s for s in other_shapes if s.y + s.height < c_shape.y]
             for shape in other_shapes:
                 if not (shape.x + shape.width + constants.saw_kerf <= c_shape.x or
@@ -231,19 +222,16 @@ class Log:
                     if c_shape.y - (shape.y + shape.height + constants.saw_kerf) < min_space:
                         min_space = c_shape.y - (shape.y + shape.height + constants.saw_kerf)
                         if min_space < -constants.error_margin:
-                            print(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
+                            logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
                                   f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
                             raise ValueError
-                    else:
-                        min_y_bot_left, _ = self.calculate_edge_positions_on_circle(shape.x)
-                        min_y_bot_right, _ = self.calculate_edge_positions_on_circle(shape.x + shape.width)
-                        minimum_y_bot = max(min_y_bot_left, min_y_bot_right)
-                        if c_shape.y - minimum_y_bot < min_space:
-                            min_space = c_shape.y - minimum_y_bot
-                            if min_space < -constants.error_margin:
-                                print(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
-                                      f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
-                                raise ValueError
+            # Check Log Boundaries
+            min_y_bot_left, _ = self.calculate_edge_positions_on_circle(c_shape.x)
+            min_y_bot_right, _ = self.calculate_edge_positions_on_circle(c_shape.x + c_shape.width)
+            minimum_y_bot = max(min_y_bot_left, min_y_bot_right)
+            if c_shape.y - minimum_y_bot < min_space:
+                min_space = c_shape.y - minimum_y_bot
+
         else:
             logger.error(f"Unknown Orientation {orientation}")
             raise NotImplementedError(f"No orientation {orientation}")

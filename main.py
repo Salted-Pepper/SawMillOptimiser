@@ -39,8 +39,8 @@ if __name__ == '__main__':
     # logs.append(Log(350))
     # logs.append(Log(460))
     # logs.append(Log(470))
-    # logs.append(Log(560))
-    logs.append(Log(580))
+    logs.append(Log(560))
+    # logs.append(Log(580))
     # logs.append(Log(390))
     # logs.append(Log(608))
     # logs.append(Log(503))
@@ -83,10 +83,6 @@ if __name__ == '__main__':
     ALNS.greedy_place(all_shapes=shapes,
                       logs=logs,
                       shape_types=shape_types)
-
-    for log in logs:
-        log.update_plot_title()
-        log.show_plot()
 
     solution_quality_df = ALNS.run_ALNS(logs=logs, shape_types=shape_types)
 
