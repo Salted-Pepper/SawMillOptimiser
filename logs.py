@@ -146,7 +146,8 @@ class Log:
             min_space_bot, _ = c_shape.log.calculate_edge_positions_on_circle(c_shape.y)
             min_space_top, _ = c_shape.log.calculate_edge_positions_on_circle((c_shape.y + c_shape.height))
             min_space = c_shape.x - max(min_space_bot, min_space_top)
-            other_shapes = [s for s in other_shapes if s.x + s.width <= c_shape.x]
+            other_shapes = [s for s in other_shapes if s.x + s.width + constants.saw_kerf
+                            <= c_shape.x + constants.error_margin]
             # Check if shapes are on the same height, and whether the shape is on the left (direction of orientation)
             for shape in other_shapes:
                 if not (shape.y + shape.height + constants.saw_kerf <= c_shape.y or
@@ -155,7 +156,7 @@ class Log:
                         min_space = c_shape.x - (shape.x + shape.width + constants.saw_kerf)
                         if min_space < -constants.error_margin:
                             logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
-                                  f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
+                                         f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
                             raise ValueError
             # Check Log Boundaries
             min_x_left_top, _ = self.calculate_edge_positions_on_circle(c_shape.y + c_shape.height)
@@ -168,7 +169,8 @@ class Log:
             _, max_space_bot = c_shape.log.calculate_edge_positions_on_circle(c_shape.y)
             _, max_space_top = c_shape.log.calculate_edge_positions_on_circle((c_shape.y + c_shape.height))
             min_space = min(max_space_bot, max_space_top) - (c_shape.x + c_shape.width)
-            other_shapes = [s for s in other_shapes if s.x >= c_shape.x + c_shape.width]
+            other_shapes = [s for s in other_shapes if s.x + constants.error_margin >=
+                            c_shape.x + c_shape.width + constants.saw_kerf]
             for shape in other_shapes:
                 if not (shape.y + shape.height + constants.saw_kerf <= c_shape.y or
                         shape.y >= c_shape.y + c_shape.height + constants.saw_kerf):
@@ -176,7 +178,7 @@ class Log:
                         min_space = shape.x - (c_shape.x + c_shape.width + constants.saw_kerf)
                         if min_space < -constants.error_margin:
                             logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
-                                  f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
+                                         f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
                             raise ValueError
             # Check Log Boundaries
             _, max_x_right_top = self.calculate_edge_positions_on_circle(c_shape.y + c_shape.height)
@@ -189,7 +191,8 @@ class Log:
             _, max_space_left = c_shape.log.calculate_edge_positions_on_circle(c_shape.x)
             _, max_space_right = c_shape.log.calculate_edge_positions_on_circle((c_shape.x + c_shape.width))
             min_space = min(max_space_left, max_space_right) - (c_shape.y + c_shape.height)
-            other_shapes = [s for s in other_shapes if s.y >= c_shape.y + c_shape.height]
+            other_shapes = [s for s in other_shapes if s.y + constants.error_margin >=
+                            c_shape.y + c_shape.height + constants.saw_kerf]
             for shape in other_shapes:
                 if not (shape.x + shape.width + constants.saw_kerf <= c_shape.x or
                         shape.x >= c_shape.x + c_shape.width + constants.saw_kerf):
@@ -197,7 +200,7 @@ class Log:
                         min_space = shape.y - (c_shape.y + c_shape.height + constants.saw_kerf)
                         if min_space < -constants.error_margin:
                             logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
-                                  f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
+                                         f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
                             raise ValueError
             # Check Log Boundaries
             _, max_y_top_left = self.calculate_edge_positions_on_circle(c_shape.x)
@@ -212,7 +215,8 @@ class Log:
             min_space_left, _ = c_shape.log.calculate_edge_positions_on_circle(c_shape.x)
             min_space_right, _ = c_shape.log.calculate_edge_positions_on_circle((c_shape.x + c_shape.width))
             min_space = c_shape.y - max(min_space_left, min_space_right)
-            other_shapes = [s for s in other_shapes if s.y + s.height < c_shape.y]
+            other_shapes = [s for s in other_shapes if s.y + s.height + constants.saw_kerf <=
+                            c_shape.y + constants.error_margin]
             for shape in other_shapes:
                 if not (shape.x + shape.width + constants.saw_kerf <= c_shape.x or
                         shape.x >= c_shape.x + c_shape.width + constants.saw_kerf):
@@ -220,7 +224,7 @@ class Log:
                         min_space = c_shape.y - (shape.y + shape.height + constants.saw_kerf)
                         if min_space < -constants.error_margin:
                             logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
-                                  f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
+                                         f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
                             raise ValueError
             # Check Log Boundaries
             min_y_bot_left, _ = self.calculate_edge_positions_on_circle(c_shape.x)
@@ -252,10 +256,10 @@ def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
     b_y_1 = shape_b.y
     b_y_2 = shape_b.y + shape_b.height
 
-    if a_x_1 - sk <= b_x_2 + constants.error_margin \
-            and a_x_2 + sk + constants.error_margin >= b_x_1 \
-            and a_y_1 - sk <= b_y_2 + constants.error_margin \
-            and a_y_2 + sk + constants.error_margin >= b_y_1:
+    if a_x_1 - sk + constants.error_margin <= b_x_2 \
+            and a_x_2 + sk >= b_x_1 + constants.error_margin \
+            and a_y_1 - sk + constants.error_margin <= b_y_2 \
+            and a_y_2 + sk >= b_y_1 + constants.error_margin:
         return True
     else:
         return False

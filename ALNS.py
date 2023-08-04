@@ -199,7 +199,7 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
             for short_shape in shorter_a_shapes:
                 h_n = short_shape.height
                 r = log.diameter / 2
-                inner_value = r ** 2 - ((log.diameter + shape.height) / 2 + h_n - r) ** 2
+                inner_value = r ** 2 - ((log.diameter + (shape.height + 2*constants.saw_kerf)) / 2 + h_n - r) ** 2
 
                 x_left_north = r - math.sqrt(inner_value)
                 x_right_north = r + math.sqrt(inner_value)
@@ -273,7 +273,7 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
 
         h, x_left_central, x_right_central, h_n = best_complete_solution[3]
 
-        x = x_left_central + constants.saw_kerf
+        x = x_left_central
         y = (log.diameter - h) / 2
 
         for shape_info in shapes_in_central:
@@ -287,7 +287,7 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                              f"h:{shape_type.height} at ({x}, {y})")
                 x += shape_type.width + constants.saw_kerf
 
-        y_plus = (log.diameter + (h + constants.saw_kerf)) / 2 + h_n
+        y_plus = (log.diameter + (h + 2 * constants.saw_kerf)) / 2 + h_n
         x_left, x_right = log.calculate_edge_positions_on_circle(z=y_plus)
 
         x = x_left
