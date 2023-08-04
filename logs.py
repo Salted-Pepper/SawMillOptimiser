@@ -141,15 +141,12 @@ class Log:
         :return:
         """
         other_shapes = [s for s in self.shapes if s.shape_id != c_shape.shape_id]
-        # TODO: Check closest shape calculation
         if orientation == "left":
             # Set log boundaries for the shape
             min_space_bot, _ = c_shape.log.calculate_edge_positions_on_circle(c_shape.y)
             min_space_top, _ = c_shape.log.calculate_edge_positions_on_circle((c_shape.y + c_shape.height))
             min_space = c_shape.x - max(min_space_bot, min_space_top)
             other_shapes = [s for s in other_shapes if s.x + s.width <= c_shape.x]
-            for s in other_shapes:
-                print(f"Considering {s.shape_id}")
             # Check if shapes are on the same height, and whether the shape is on the left (direction of orientation)
             for shape in other_shapes:
                 if not (shape.y + shape.height + constants.saw_kerf <= c_shape.y or
@@ -255,10 +252,10 @@ def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
     b_y_1 = shape_b.y
     b_y_2 = shape_b.y + shape_b.height
 
-    if a_x_1 - sk <= b_x_2 \
-            and a_x_2 + sk >= b_x_1 \
-            and a_y_1 - sk <= b_y_2 \
-            and a_y_2 + sk >= b_y_1:
+    if a_x_1 - sk <= b_x_2 + constants.error_margin \
+            and a_x_2 + sk + constants.error_margin >= b_x_1 \
+            and a_y_1 - sk <= b_y_2 + constants.error_margin \
+            and a_y_2 + sk + constants.error_margin >= b_y_1:
         return True
     else:
         return False

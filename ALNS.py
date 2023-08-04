@@ -95,6 +95,9 @@ def run_ALNS(logs: list, shape_types: list):
                 tuck_method.used()
                 tuck_method.execute(log_new, shape_types)
 
+            if not ALNS_tools.check_feasibility(logs):
+                raise ValueError(f"Placement not feasible")
+
         ALNS_tools.update_log_scores([log_new])
         accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log_new, log, temperature)
 
@@ -270,7 +273,7 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
 
         h, x_left_central, x_right_central, h_n = best_complete_solution[3]
 
-        x = x_left_central
+        x = x_left_central + constants.saw_kerf
         y = (log.diameter - h) / 2
 
         for shape_info in shapes_in_central:
@@ -415,8 +418,7 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
                     x -= shape_type.width + constants.saw_kerf
                     shapes.append(Shape(shape_type=shape_type, x=x, y=y_north))
                     shapes.append(Shape(shape_type=shape_type, x=x,
-                                        y=(log.diameter - h) / 2 - shape_type.height
-                                          - constants.saw_kerf))
+                                        y=(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf))
                     logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                                  f"h:{shape_type.height} at ({x}, "
                                  f"{(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf}) "
@@ -517,8 +519,7 @@ def create_edge_solutions(shapes: list, log: Log, shape_types: list, h: float, h
             for i in range(quantity):
                 shapes.append(Shape(shape_type=shape_type, x=x, y=min_y))
                 shapes.append(Shape(shape_type=shape_type, x=x,
-                                    y=(log.diameter - h) / 2 - h_n - shape_type.height -
-                                      2 * (constants.saw_kerf)))
+                                    y=(log.diameter - h) / 2 - h_n - shape_type.height - 2 * constants.saw_kerf))
                 logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                              f"h:{shape_type.height} at ({x}, "
                              f"{(log.diameter - h) / 2 - h_n - shape_type.height - constants.saw_kerf})"

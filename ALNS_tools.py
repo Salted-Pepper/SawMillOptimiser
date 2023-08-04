@@ -418,3 +418,19 @@ def check_if_shape_in_rectangle(shape: Shape, x_0, x_1, y_0, y_1) -> bool:
 def plot_iteration_data():
     # TODO: Plotting iteration data
     pass
+
+
+def check_if_logs_feasible(list_of_logs) -> bool:
+    for log in list_of_logs:
+        if not log.check_if_feasible():
+            return False
+    return True
+
+
+def check_feasibility(list_of_logs):
+    if check_if_logs_feasible(list_of_logs):
+        print("No conflicting logs found!")
+        return True
+    else:
+        print("Incorrect shape placement!")
+        return False

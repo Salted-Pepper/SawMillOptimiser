@@ -33,7 +33,7 @@ def tuck(name: str, log: Log):
 
     if name.endswith("CENTRE"):
         # First see which direction to move the block in, move centre of block to centre of log
-        centre_point = log.diameter
+        centre_point = log.diameter / 2
         for shape in random_shapes:
             centre_x = shape.x + shape.width / 2
             centre_y = shape.y + shape.height / 2
@@ -42,37 +42,44 @@ def tuck(name: str, log: Log):
             # Can't move both areas at the same time, as there could be rectangles in the corners
             if centre_x > centre_point:
                 space_x = -log.find_shapes_closest_to_shape(c_shape=shape, orientation="left")
+                logging.debug(f"Moving space to left {space_x}")
             else:
                 space_x = log.find_shapes_closest_to_shape(c_shape=shape, orientation="right")
+                logging.debug(f"Moving space to right {space_x}")
 
             if centre_y > centre_point:
-                space_y = log.find_shapes_closest_to_shape(c_shape=shape, orientation="down")
+                space_y = -log.find_shapes_closest_to_shape(c_shape=shape, orientation="down")
+                logging.debug(f"Moving space to down {space_y}")
             else:
-                space_y = -log.find_shapes_closest_to_shape(c_shape=shape, orientation="up")
+                space_y = log.find_shapes_closest_to_shape(c_shape=shape, orientation="up")
+                logging.debug(f"Moving space to up {space_x}")
 
-            if ALNS_tools.check_if_rectangle_empty(x_0=shape.x + space_x - constants.saw_kerf,
-                                                   x_1=shape.x + space_x + shape.width + constants.saw_kerf,
-                                                   y_0=shape.y + space_y - constants.saw_kerf,
-                                                   y_1=shape.y + space_y + shape.height + constants.saw_kerf,
+            if ALNS_tools.check_if_rectangle_empty(x_0=shape.x + space_x,
+                                                   x_1=shape.x + space_x + shape.width,
+                                                   y_0=shape.y + space_y,
+                                                   y_1=shape.y + space_y + shape.height,
                                                    log=log):
                 logger.debug(f"Moved shape {shape.shape_id} from ({shape.x},{shape.y}) "
                              f"to ({shape.x + space_x}, {shape.y + space_y}) using CENTRE")
                 shape.x += space_x
                 shape.y += space_y
 
-                successful = True
+                if space_x != 0 or space_y != 0:
+                    successful = True
             elif abs(space_x) > abs(space_y):
                 logger.debug(
                     f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x + space_x}, {shape.y}) "
                     f"- did not move y coordinates")
                 shape.x += space_x
-                successful = True
+                if space_x != 0 or space_y != 0:
+                    successful = True
             else:
                 logger.debug(
                     f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x}, {shape.y + space_y}) "
                     f"- did not move x coordinates")
                 shape.y += space_y
-                successful = True
+                if space_x != 0 or space_y != 0:
+                    successful = True
             if shape.x < 0 or shape.y < 0 or shape.x > log.diameter or shape.y > log.diameter:
                 raise ValueError(f"Moved {shape.shape_id} to illegal location {shape.x, shape.y} "
                                  f"using {space_x}, {space_y} from ({centre_x}, {centre_y})")
@@ -302,7 +309,6 @@ def single_extension_repair(log: Log, shape_types: list) -> bool:
     space_right = log.find_shapes_closest_to_shape(shape, orientation="right")
     space_up = log.find_shapes_closest_to_shape(shape, orientation="up")
     space_down = log.find_shapes_closest_to_shape(shape, orientation="down")
-    # TODO: Check if rectangle is empty, check if rectangle doesn't intersect with border
     logger.debug(f"SER found space around shape {shape.shape_id} at ({shape.x :.2f},{shape.y: .2f}) "
                  f"- ({shape.width}, {shape.height})"
                  f"of ({space_left: .2f},{space_right: .2f},{space_up: .2f},{space_down: .2f})")

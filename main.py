@@ -1,3 +1,4 @@
+import ALNS_tools
 from logs import Log
 from shapes import Shape, ShapeType
 import ALNS
@@ -9,23 +10,6 @@ default measurement: millimeters
 default dimensionality: width x height
 """
 
-
-def check_if_logs_feasible(list_of_logs) -> bool:
-    for log in list_of_logs:
-        if not log.check_if_feasible():
-            return False
-    return True
-
-
-def check_feasibility(list_of_logs):
-    if check_if_logs_feasible(list_of_logs):
-        print("No conflicting logs found!")
-        return True
-    else:
-        print("Incorrect shape placement!")
-        return False
-
-
 if __name__ == '__main__':
 
     logs = []
@@ -34,12 +18,12 @@ if __name__ == '__main__':
     """
     Create Logs (to be done in UI)
     """
-    # logs.append(Log(450))
-    # logs.append(Log(500))
-    # logs.append(Log(350))
-    # logs.append(Log(460))
-    # logs.append(Log(470))
-    logs.append(Log(560))
+    logs.append(Log(450))
+    logs.append(Log(500))
+    logs.append(Log(350))
+    logs.append(Log(460))
+    logs.append(Log(470))
+    # logs.append(Log(560))
     # logs.append(Log(580))
     # logs.append(Log(390))
     # logs.append(Log(608))
@@ -90,4 +74,4 @@ if __name__ == '__main__':
         log.update_plot_title()
         log.show_plot()
 
-    check_feasibility(list_of_logs=logs)
+    ALNS_tools.check_feasibility(list_of_logs=logs)

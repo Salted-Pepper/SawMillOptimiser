@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.colors as mcolors
 import logging
 import datetime
 
@@ -106,11 +107,11 @@ class Shape:
         if self.colour is not None:
             self.rect = mpatches.Rectangle((self.x, self.y),
                                            self.width, self.height,
-                                           color=self.colour, alpha=0.7)
+                                           facecolor=(mcolors.to_rgb(self.colour) + (0.5,)))
         else:
             self.rect = mpatches.Rectangle((self.x, self.y),
                                            self.width, self.height,
-                                           alpha=0.7)
+                                           facecolor=mcolors.to_rgb(self.colour) + (0.5,))
 
         self.rect_kerf = mpatches.Rectangle((self.x - constants.saw_kerf,
                                              self.y - constants.saw_kerf),
@@ -169,14 +170,14 @@ class Shape:
         y_min_right, y_plus_right = self.log.calculate_edge_positions_on_circle(self.x + self.width)
         x_min_bot, x_plus_bot = self.log.calculate_edge_positions_on_circle(self.y)
 
-        if self.x >= x_min_bot and \
-                self.x >= x_min_top and \
-                self.x + self.width <= x_plus_top and \
-                self.x + self.width <= x_plus_bot and \
-                self.y >= y_min_left and \
-                self.y >= y_min_right and \
-                self.y + self.height <= y_plus_left and \
-                self.y + self.height <= y_plus_right:
+        if self.x + constants.error_margin >= x_min_bot and \
+                self.x + constants.error_margin >= x_min_top and \
+                self.x + self.width <= x_plus_top + constants.error_margin and \
+                self.x + self.width <= x_plus_bot + constants.error_margin and \
+                self.y + constants.error_margin >= y_min_left and \
+                self.y + constants.error_margin >= y_min_right and \
+                self.y + self.height <= y_plus_left + constants.error_margin and \
+                self.y + self.height <= y_plus_right + constants.error_margin:
             return True
         else:
             return False
