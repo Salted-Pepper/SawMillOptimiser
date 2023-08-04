@@ -115,7 +115,7 @@ def check_if_new_solution_better(log_old: Log, log: Log, temperature: float) -> 
     log_old_score = calculate_log_score(log_old)
     log_score = calculate_log_score(log)
     # TODO: Probability based acceptance using temperature
-    if log_old_score >= log_score:
+    if log_old_score > log_score:
         return False, 0, log_old_score
     else:
         return True, log_score - log_old_score, log_score
@@ -415,9 +415,12 @@ def check_if_shape_in_rectangle(shape: Shape, x_0, x_1, y_0, y_1) -> bool:
         return False
 
 
-def plot_iteration_data():
-    # TODO: Plotting iteration data
-    pass
+def plot_iteration_data(logs: list, df: pd.DataFrame):
+    fig, ax = plt.subplots()
+    for log in range(len(logs)):
+        df_log = df[df["log"] == log]
+        ax.plot(df_log["iteration"], df_log["efficiency"])
+    plt.show()
 
 
 def check_if_logs_feasible(list_of_logs) -> bool:
@@ -429,7 +432,6 @@ def check_if_logs_feasible(list_of_logs) -> bool:
 
 def check_feasibility(list_of_logs):
     if check_if_logs_feasible(list_of_logs):
-        print("No conflicting logs found!")
         return True
     else:
         print("Incorrect shape placement!")

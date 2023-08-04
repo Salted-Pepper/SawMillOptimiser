@@ -90,8 +90,7 @@ class Shape:
         self.width = self.height
         self.height = width
 
-    def add_rect_to_plot(self) -> list:
-
+    def add_rect_to_plot(self) -> list or None:
         if self.log is None:
             print("Piece not attributed to log, not able to show figure")
             return None
@@ -132,7 +131,6 @@ class Shape:
     def assign_to_log(self, log):
         self.log = log
         self.log.add_shape(self)
-        self.add_rect_to_plot()
 
     def remove_from_log(self):
         logger.debug(f"Removing shape {self.shape_id} from log {self.log.log_id}")

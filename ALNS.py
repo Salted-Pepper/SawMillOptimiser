@@ -54,9 +54,9 @@ def run_ALNS(logs: list, shape_types: list):
     Start ALNS Sequence, select random methods to repair and destroy based on assigned probabilities
     """
     while temperature > 0 and iteration <= constants.max_iterations:
-        logger.debug(f"Going into iteration {iteration} with temperature {temperature}...")
+
         log = ALNS_tools.select_log(logs)
-        logger.debug(f"Select log {log.log_id}.")
+        logger.debug(f"Going into iteration {iteration} with temperature {temperature}... Selected {log.log_id}")
         # TODO: Invoke copy here to ensure changes do not always apply
         log_new = copy.deepcopy(log)
 
@@ -95,6 +95,7 @@ def run_ALNS(logs: list, shape_types: list):
                 tuck_method.used()
                 tuck_method.execute(log_new, shape_types)
 
+            # TODO: REMOVE FEASIBILITY CHECK AFTER EACH ITERATION - THIS IS ONLY FOR DEBUGGING
             if not ALNS_tools.check_feasibility(logs):
                 raise ValueError(f"Placement not feasible")
 
@@ -105,8 +106,10 @@ def run_ALNS(logs: list, shape_types: list):
         Single Iteration completed, process changes and update parameter values
         """
         if accept_new_solution:
+            logger.debug(f"New solution has been accepted with improvement {delta} \n \n")
             log = log_new
         else:
+            logger.debug(f"New solution has been declined, delta of {delta} \n \n")
             pass
         # TODO: Save image of the iteration
 

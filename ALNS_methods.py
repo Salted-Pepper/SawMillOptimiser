@@ -42,17 +42,13 @@ def tuck(name: str, log: Log):
             # Can't move both areas at the same time, as there could be rectangles in the corners
             if centre_x > centre_point:
                 space_x = -log.find_shapes_closest_to_shape(c_shape=shape, orientation="left")
-                logging.debug(f"Moving space to left {space_x}")
             else:
                 space_x = log.find_shapes_closest_to_shape(c_shape=shape, orientation="right")
-                logging.debug(f"Moving space to right {space_x}")
 
             if centre_y > centre_point:
                 space_y = -log.find_shapes_closest_to_shape(c_shape=shape, orientation="down")
-                logging.debug(f"Moving space to down {space_y}")
             else:
                 space_y = log.find_shapes_closest_to_shape(c_shape=shape, orientation="up")
-                logging.debug(f"Moving space to up {space_x}")
 
             if ALNS_tools.check_if_rectangle_empty(x_0=shape.x + space_x,
                                                    x_1=shape.x + space_x + shape.width,
@@ -191,8 +187,8 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
     left_most_x, right_most_x = log.calculate_edge_positions_on_circle(p_y)
     lowest_y, highest_y = log.calculate_edge_positions_on_circle(p_x)
 
-    logger.debug(f"Initialized x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
-                 f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
+    # logger.debug(f"Initialized x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
+    #              f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
 
     for shape in log.shapes:
         # see if shape is in same p_x dimension
@@ -211,8 +207,8 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
 
             if p_x < shape.x - constants.saw_kerf < right_most_x:
                 right_most_x = shape.x - constants.saw_kerf
-    logger.debug(f"After checking shape collisions x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
-                 f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
+    # logger.debug(f"After checking shape collisions x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
+    #              f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
     # Check if rectangle is empty
     violating_shapes = ALNS_tools.check_if_rectangle_empty(x_0=left_most_x, x_1=right_most_x,
                                                            y_0=lowest_y, y_1=highest_y, log=log)
@@ -236,16 +232,12 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
         largest_remaining_cut = max(cuts)
         if cut_upper_off == largest_remaining_cut:
             highest_y = shape.y - constants.saw_kerf
-            logger.debug(f"Cutting off top past {highest_y: .2f}")
         elif cut_lower_off == largest_remaining_cut:
             lowest_y = shape.y + shape.height + constants.saw_kerf
-            logger.debug(f"Cutting off lower under {lowest_y: .2f}")
         elif cut_left_off == largest_remaining_cut:
             left_most_x = shape.x + shape.width + constants.saw_kerf
-            logger.debug(f"Cutting off left of {left_most_x: .2f}")
         else:
             right_most_x = shape.x - constants.saw_kerf
-            logger.debug(f"Cutting off right of {right_most_x: .2f}")
 
     logger.debug(f"Post Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
                  f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
@@ -261,10 +253,6 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
                                                                        lowest_y, highest_y,
                                                                        priority="height",
                                                                        log=log)
-    logger.debug(f"Outcome prioritizing width: xy: "
-                 f"({left_x_width: .2f}, {low_y_width: .2f}) ({right_x_width: .2f}, {top_y_width: .2f})")
-    logger.debug(f"Outcome prioritizing height: xy: "
-                 f"({left_x_height: .2f}, {low_y_height: .2f}) ({right_x_height: .2f}, {top_y_height: .2f})")
     wide_candidate_shapes = [s for s in shape_types if s.width <= right_x_width - left_x_width
                              and s.height <= top_y_width - low_y_width]
     high_candidate_shapes = [s for s in shape_types if s.width <= right_x_height - left_x_height
@@ -281,12 +269,10 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
     if usage_wide == usage_high == 0:
         logger.debug("No feasible solution")
     elif usage_wide > usage_high:
-        logger.debug("Picking solution prioritising width")
         for shape in new_shapes_wide:
             shape.assign_to_log(log)
         successful = True
     elif usage_wide < usage_high:
-        logger.debug("Picking solution prioritising height")
         for shape in new_shapes_high:
             shape.assign_to_log(log)
         successful = True
@@ -308,9 +294,6 @@ def single_extension_repair(log: Log, shape_types: list) -> bool:
     space_right = log.find_shapes_closest_to_shape(shape, orientation="right")
     space_up = log.find_shapes_closest_to_shape(shape, orientation="up")
     space_down = log.find_shapes_closest_to_shape(shape, orientation="down")
-    logger.debug(f"SER found space around shape {shape.shape_id} at ({shape.x :.2f},{shape.y: .2f}) "
-                 f"- ({shape.width}, {shape.height})"
-                 f"of ({space_left: .2f},{space_right: .2f},{space_up: .2f},{space_down: .2f})")
 
     # Now expand in either horizontal or vertical direction
     total_horizontal_space = space_left + space_right + shape.width

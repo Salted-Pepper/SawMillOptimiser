@@ -40,7 +40,6 @@ class Log:
         self.ax = None
         self.shapes = []
         self.patches = []
-        self.plot_log()
 
     def plot_log(self) -> None:
         fig = plt.figure(figsize=(9, 9))
@@ -62,8 +61,9 @@ class Log:
         self.ax.add_patch(circle)
         self.ax.set_title(f"id: {self.log_id}, "
                           r"$d_i$:" + f"{self.diameter}, "
-                                      r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
-                                                     r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}")
+                          r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
+                          r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}")
+        self.patches.append(circle)
 
     def calculate_efficiency(self) -> float:
         self.efficiency = self.volume_used / self.volume
@@ -74,9 +74,13 @@ class Log:
 
     def show_plot(self) -> None:
         global date
+        self.plot_log()
         self.update_plot()
-        self.fig.savefig(f"plots/log_{self.log_id}_{date.strftime('%d_%m_%Y_%H_%M_%S')}.png")
         self.fig.show()
+
+    def save_log_plot(self):
+        date_time = datetime.datetime.now()
+        self.fig.savefig(f"plots/log_{self.log_id}_{date_time.strftime('%d_%m_%Y_%H_%M_%S')}.png")
 
     def calculate_edge_positions_on_circle(self, z: float) -> tuple:
         r = self.diameter / 2
@@ -90,18 +94,18 @@ class Log:
     def check_if_feasible(self) -> bool:
         for index_1, s1 in enumerate(self.shapes):
             if not s1.shape_is_within_log():
-                print(f"Shape {s1.shape_id} falls outside of log {self.log_id}")
+                logger.critical(f"Shape {s1.shape_id} falls outside of log {self.log_id}")
                 return False
 
             for s2 in self.shapes[index_1 + 1:]:
                 if check_shapes_intersect(s1, s2):
-                    print(f"Shapes {s1.shape_id} and {s2.shape_id} intersect!")
-                    print(f"Coordinates are: (({s1.x},{s1.y}), "
-                          f"({s1.x + s1.width} {s1.y + s1.height})),"
-                          f"(({s2.x}, {s2.y}), ({s2.x + s2.width, s2.y + s2.height}))")
+                    logger.critical(f"Shapes {s1.shape_id} and {s2.shape_id} intersect!")
+                    logger.critical(f"Coordinates are: (({s1.x},{s1.y}), "
+                                    f"({s1.x + s1.width} {s1.y + s1.height})),"
+                                    f"(({s2.x}, {s2.y}), ({s2.x + s2.width, s2.y + s2.height}))")
                     return False
                 else:
-                    print(f"Shapes {s1.shape_id} and {s2.shape_id} do not intersect")
+                    pass
         return True
 
     def add_shape(self, shape: Shape) -> None:
