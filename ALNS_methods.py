@@ -50,11 +50,11 @@ def tuck(name: str, log: Log):
             else:
                 space_y = log.find_shapes_closest_to_shape(c_shape=shape, orientation="up")
 
-            if ALNS_tools.check_if_rectangle_empty(x_0=shape.x + space_x,
-                                                   x_1=shape.x + space_x + shape.width,
-                                                   y_0=shape.y + space_y,
-                                                   y_1=shape.y + space_y + shape.height,
-                                                   log=log):
+            if len(ALNS_tools.check_if_rectangle_empty(x_0=shape.x + space_x,
+                                                       x_1=shape.x + space_x + shape.width,
+                                                       y_0=shape.y + space_y,
+                                                       y_1=shape.y + space_y + shape.height,
+                                                       log=log)) == 0:
 
                 if space_x != 0 or space_y != 0:
                     logger.debug(f"Moved shape {shape.shape_id} from ({shape.x},{shape.y}) "
@@ -239,8 +239,8 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
         else:
             right_most_x = shape.x - constants.saw_kerf
 
-    logger.debug(f"Post Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
-                 f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
+    # logger.debug(f"Post Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
+    #              f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
 
     # Recheck the log boundaries
     (left_x_width, right_x_width,
@@ -267,7 +267,8 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
                                                                          shape_types=shape_types, shapes=[])
 
     if usage_wide == usage_high == 0:
-        logger.debug("No feasible solution")
+        # logger.debug("No feasible solution")
+        pass
     elif usage_wide > usage_high:
         for shape in new_shapes_wide:
             shape.assign_to_log(log)

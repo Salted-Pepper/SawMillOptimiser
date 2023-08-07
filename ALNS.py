@@ -57,8 +57,10 @@ def run_ALNS(logs: list, shape_types: list):
 
         log = ALNS_tools.select_log(logs)
         logger.debug(f"Going into iteration {iteration} with temperature {temperature}... Selected {log.log_id}")
-        # TODO: Invoke copy here to ensure changes do not always apply
-        log_new = copy.deepcopy(log)
+        # TODO: Invoke copy here to ensure changes do not apply unless new solution is accepted
+        log_new = Log(log.diameter)
+        for shape in log.shapes:
+            Shape(shape_type=shape.type, x=shape.x, y=shape.y).assign_to_log(log_new)
 
         # Only run repair methods for the first couple of iterations to fill up empty space in initial solution
         if iteration < constants.fill_up_iterations:
@@ -100,14 +102,20 @@ def run_ALNS(logs: list, shape_types: list):
                 raise ValueError(f"Placement not feasible")
 
         ALNS_tools.update_log_scores([log_new])
-        accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log_new, log, temperature)
+        accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log, log_new, temperature)
 
         """
         Single Iteration completed, process changes and update parameter values
         """
+
+        log_new.show_plot(extra_text="(Accepted)" if accept_new_solution else "(Not Accepted)")
+        log_new.save_log_plot()
         if accept_new_solution:
             logger.debug(f"New solution has been accepted with improvement {delta} \n \n")
-            log = log_new
+            log.shapes = log_new.shapes
+            for shape in log.shapes:
+                shape.log = log
+            log.score = log_new.score
         else:
             logger.debug(f"New solution has been declined, delta of {delta} \n \n")
             pass

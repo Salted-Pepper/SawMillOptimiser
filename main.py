@@ -18,12 +18,12 @@ if __name__ == '__main__':
     """
     Create Logs (to be done in UI)
     """
-    logs.append(Log(450))
-    logs.append(Log(500))
-    logs.append(Log(350))
-    logs.append(Log(460))
-    logs.append(Log(470))
-    # logs.append(Log(560))
+    # logs.append(Log(450))
+    # logs.append(Log(500))
+    # logs.append(Log(350))
+    # logs.append(Log(460))
+    # logs.append(Log(470))
+    logs.append(Log(560))
     # logs.append(Log(580))
     # logs.append(Log(390))
     # logs.append(Log(608))

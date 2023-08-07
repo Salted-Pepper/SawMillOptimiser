@@ -51,7 +51,7 @@ class Log:
         self.fig = fig
         self.ax = ax
 
-    def update_plot(self) -> None:
+    def update_plot(self, extra_text="") -> None:
         for patch in self.patches:
             patch.remove()
         for shape in self.shapes:
@@ -62,7 +62,7 @@ class Log:
         self.ax.set_title(f"id: {self.log_id}, "
                           r"$d_i$:" + f"{self.diameter}, "
                           r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
-                          r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}")
+                          r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}" + extra_text)
         self.patches.append(circle)
 
     def calculate_efficiency(self) -> float:
@@ -72,10 +72,10 @@ class Log:
     def return_plot(self) -> tuple:
         return self.fig, self.ax
 
-    def show_plot(self) -> None:
+    def show_plot(self, extra_text="") -> None:
         global date
         self.plot_log()
-        self.update_plot()
+        self.update_plot(extra_text)
         self.fig.show()
 
     def save_log_plot(self):
@@ -99,7 +99,7 @@ class Log:
 
             for s2 in self.shapes[index_1 + 1:]:
                 if check_shapes_intersect(s1, s2):
-                    logger.critical(f"Shapes {s1.shape_id} and {s2.shape_id} intersect!")
+                    logger.critical(f"Shapes {s1.shape_id} and {s2.shape_id} intersect in log {self.log_id}!")
                     logger.critical(f"Coordinates are: (({s1.x},{s1.y}), "
                                     f"({s1.x + s1.width} {s1.y + s1.height})),"
                                     f"(({s2.x}, {s2.y}), ({s2.x + s2.width, s2.y + s2.height}))")
@@ -248,11 +248,6 @@ class Log:
         else:
             logger.error(f"Unknown Orientation {orientation}")
             raise NotImplementedError(f"No orientation {orientation}")
-
-        if min_space < 0:
-            logger.error(f"Found minimum space between pieces of {min_space} for shape at "
-                         f"({c_shape.x}, {c_shape.y}) with (w,h)=({c_shape.width},{c_shape.height}) "
-                         f"in log {self.log_id}, with orientation {orientation}")
         return min_space
 
 

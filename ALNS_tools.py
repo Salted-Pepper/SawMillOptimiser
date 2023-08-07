@@ -34,13 +34,9 @@ def update_log_scores(logs: list) -> None:
 
 
 def calculate_log_score(log: Log):
-    usage_multiplier = 1
-    saw_dust_multiplier = -1.5
-    unused_multiplier = -1
-
-    log.score = log.volume_used * usage_multiplier \
-                + log.saw_dust * saw_dust_multiplier \
-                + (log.volume - log.volume_used) * unused_multiplier
+    log.score = log.volume_used * constants.usage_multiplier \
+                + log.saw_dust * constants.saw_dust_multiplier \
+                + (log.volume - log.volume_used) * constants.unused_multiplier
 
     return log.score
 
@@ -111,9 +107,9 @@ def find_max_rectangle_width(log: Log, height: float, x: float, y: float, orient
         raise NotImplemented("SE Not yet implemented")
 
 
-def check_if_new_solution_better(log_old: Log, log: Log, temperature: float) -> tuple:
+def check_if_new_solution_better(log_old: Log, log_new: Log, temperature: float) -> tuple:
     log_old_score = calculate_log_score(log_old)
-    log_score = calculate_log_score(log)
+    log_score = calculate_log_score(log_new)
     # TODO: Probability based acceptance using temperature
     if log_old_score > log_score:
         return False, 0, log_old_score
@@ -330,8 +326,8 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
                           "Vertical"])
 
     if len(solutions) == 0:
-        logging.warning(f"No Solution Found Using ALNS_tools LP Solver in "
-                        f"({x_min: .2f}, {y_min: .2f}), ({x_max: .2f}, {y_max: .2f})")
+        # logging.warning(f"No Solution Found Using ALNS_tools LP Solver in "
+        #                 f"({x_min: .2f}, {y_min: .2f}), ({x_max: .2f}, {y_max: .2f})")
         return [], 0
 
     best_solution = max(solutions, key=lambda solution: solution[0])
@@ -352,16 +348,16 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
         if orientation == "Horizontal":
             for i in range(quantity):
                 shapes.append(Shape(shape_type=shape_type, x=z, y=y_min))
-                logger.debug(f"Suggesting shape {shape_type.type_id} with {shape_type.width}x{shape_type.height},"
-                             f" at location {z: .2f}, {y_min: .2f}")
+                # logger.debug(f"Suggesting shape {shape_type.type_id} with {shape_type.width}x{shape_type.height},"
+                #              f" at location {z: .2f}, {y_min: .2f}")
                 z += shape_type.width + constants.saw_kerf
                 if z > z_maximal:
                     raise ValueError(f"Exceeding maximum x-value {z} > {z_maximal}.")
         elif orientation == "Vertical":
             for i in range(quantity):
                 shapes.append(Shape(shape_type=shape_type, x=x_min, y=z))
-                logger.debug(f"Suggesting shape {shape_type.type_id} with {shape_type.width}x{shape_type.height}, "
-                             f"at location {x_min:.2f}, {z:.2f}")
+                # logger.debug(f"Suggesting shape {shape_type.type_id} with {shape_type.width}x{shape_type.height}, "
+                #              f"at location {x_min:.2f}, {z:.2f}")
                 z += shape_type.height + constants.saw_kerf
                 if z > z_maximal:
                     raise ValueError(f"Exceeding maximum y-value {z} > {z_maximal}.")

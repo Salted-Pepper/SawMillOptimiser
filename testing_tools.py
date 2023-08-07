@@ -17,3 +17,8 @@ def plot_log(diameter, x, y, w=0, h=0, title_text="") -> None:
 
 def select_shape_from_list_by_id(shapes, shape_id):
     return [s for s in shapes if s.shape_id == shape_id][0]
+
+
+def print_all_shapes(log):
+    for shape in log.shapes:
+        print(f"Shape {shape.shape_id} at ({shape.x},{shape.y})")
