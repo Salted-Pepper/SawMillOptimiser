@@ -10,6 +10,23 @@ default measurement: millimeters
 default dimensionality: width x height
 """
 
+
+def apply_ALNS(list_of_logs: list, list_of_shape_types: list):
+    ALNS.greedy_place(all_shapes=shapes,
+                      logs=list_of_logs,
+                      shape_types=list_of_shape_types)
+
+    solution_quality_df = ALNS.run_ALNS(logs=list_of_logs, shape_types=list_of_shape_types)
+
+    for log in list_of_logs:
+        log.show_plot()
+        log.save_log_plot()
+
+    ALNS_tools.check_feasibility(list_of_logs=list_of_logs)
+
+    ALNS_tools.plot_iteration_data(logs=list_of_logs, df=solution_quality_df)
+
+
 if __name__ == '__main__':
 
     logs = []
@@ -18,18 +35,18 @@ if __name__ == '__main__':
     """
     Create Logs (to be done in UI)
     """
-    # logs.append(Log(450))
-    # logs.append(Log(500))
-    # logs.append(Log(350))
-    # logs.append(Log(460))
-    # logs.append(Log(470))
+    logs.append(Log(450))
+    logs.append(Log(500))
+    logs.append(Log(350))
+    logs.append(Log(460))
+    logs.append(Log(470))
     logs.append(Log(560))
-    # logs.append(Log(580))
-    # logs.append(Log(390))
-    # logs.append(Log(608))
-    # logs.append(Log(503))
-    # logs.append(Log(487))
-    # logs.append(Log(640))
+    logs.append(Log(580))
+    logs.append(Log(390))
+    logs.append(Log(608))
+    logs.append(Log(503))
+    logs.append(Log(487))
+    logs.append(Log(640))
 
     """
     Import Shape Data
@@ -61,19 +78,4 @@ if __name__ == '__main__':
 
     shape_types.extend(transposed_shapes)
 
-    """
-    Create Shapes Based on Demand
-    """
-    ALNS.greedy_place(all_shapes=shapes,
-                      logs=logs,
-                      shape_types=shape_types)
-
-    solution_quality_df = ALNS.run_ALNS(logs=logs, shape_types=shape_types)
-
-    for log in logs:
-        log.show_plot()
-        log.save_log_plot()
-
-    ALNS_tools.check_feasibility(list_of_logs=logs)
-
-    ALNS_tools.plot_iteration_data(logs=logs, df=solution_quality_df)
+    apply_ALNS(logs, shape_types)

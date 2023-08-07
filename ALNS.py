@@ -21,15 +21,13 @@ logging.getLogger("PIL").setLevel(logging.WARNING)
 logging.getLogger("PIL.PngImagePlugin").setLevel(logging.WARNING)
 logger.setLevel(logging.DEBUG)
 
-solution_quality_df = pd.DataFrame(columns=["iteration", "log", "score", "saw_dust", "volume_used", "efficiency"])
-
 
 def run_ALNS(logs: list, shape_types: list):
-    global solution_quality_df
+    solution_quality_df = pd.DataFrame(columns=["iteration", "log", "score", "saw_dust", "volume_used", "efficiency"])
     iteration = 1
     temperature = constants.starting_temperature
-    destroy_degree = 2
-    repair_degree = 10
+    destroy_degree = 4
+    repair_degree = 15
 
     """
     Initialize methods and create pre-emptive calculations for parameters that will be re-used
@@ -38,6 +36,7 @@ def run_ALNS(logs: list, shape_types: list):
     ALNS_tools.calculate_smallest_shape_types(shape_types)
 
     destroy_methods = [Method(name="RANDOM", goal="destroy"),
+                       Method(name="CLUSTER", goal="destroy"),
                        Method(name="SUBSPACE", goal="destroy"),
                        Method(name="INEFFICIENCY", goal="destroy")]
     repair_methods = [Method(name="RPE", goal="repair"),
@@ -57,10 +56,10 @@ def run_ALNS(logs: list, shape_types: list):
 
         log = ALNS_tools.select_log(logs)
         logger.debug(f"Going into iteration {iteration} with temperature {temperature}... Selected {log.log_id}")
-        # TODO: Invoke copy here to ensure changes do not apply unless new solution is accepted
+        # Invoke copy here to ensure changes do not apply unless new solution is accepted
         log_new = Log(log.diameter)
         for shape in log.shapes:
-            Shape(shape_type=shape.type, x=shape.x, y=shape.y).assign_to_log(log_new)
+            Shape(shape_type=shape.type, x=shape.x, y=shape.y, copy_id=shape.shape_id).assign_to_log(log_new)
 
         # Only run repair methods for the first couple of iterations to fill up empty space in initial solution
         if iteration < constants.fill_up_iterations:
@@ -97,7 +96,7 @@ def run_ALNS(logs: list, shape_types: list):
                 tuck_method.used()
                 tuck_method.execute(log_new, shape_types)
 
-            # TODO: REMOVE FEASIBILITY CHECK AFTER EACH ITERATION - THIS IS ONLY FOR DEBUGGING
+            # TODO: REMOVE FEASIBILITY CHECK AFTER EACH ITERATION - THIS IS ONLY FOR DEBUGGING AND AFFECTS PERFORMANCE
             if not ALNS_tools.check_feasibility(logs):
                 raise ValueError(f"Placement not feasible")
 
@@ -107,19 +106,23 @@ def run_ALNS(logs: list, shape_types: list):
         """
         Single Iteration completed, process changes and update parameter values
         """
-
-        log_new.show_plot(extra_text="(Accepted)" if accept_new_solution else "(Not Accepted)")
-        log_new.save_log_plot()
+        # Optional plotting to check iterations
+        # log_new.show_plot(extra_text=
+        #                   f"(Accepted Iteration {iteration})" if accept_new_solution
+        #                   else f"(Not Accepted Iteration {iteration})")
+        # log_new.save_log_plot()
         if accept_new_solution:
             logger.debug(f"New solution has been accepted with improvement {delta} \n \n")
             log.shapes = log_new.shapes
             for shape in log.shapes:
                 shape.log = log
             log.score = log_new.score
+            log.volume_used = log_new.volume_used
+            log.calculate_efficiency()
+            log.saw_dust = log_new.saw_dust
         else:
             logger.debug(f"New solution has been declined, delta of {delta} \n \n")
             pass
-        # TODO: Save image of the iteration
 
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
         temperature = ALNS_tools.update_temperature(temperature, accept_new_solution, delta, score)
@@ -456,11 +459,11 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
 def create_edge_solutions(shapes: list, log: Log, shape_types: list, h: float, h_n: float, ) -> list:
     """
     Creates solutions for areas D in Figure 3
-    :param shapes:
-    :param log:
-    :param shape_types:
-    :param h:
-    :param h_n:
+    :param shapes: List of Shapes
+    :param log: Log Object
+    :param shape_types: List of all shape types
+    :param h: Height of centre shapes
+    :param h_n: Height of North/South rectangles
     :return:
     """
     min_y = (log.diameter + h) / 2 + h_n + 2 * constants.saw_kerf

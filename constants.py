@@ -9,13 +9,13 @@ rect_text_margin = 0.01
 ALNS Parameters
 """
 starting_temperature = 100
-max_iterations = 30
+max_iterations = 600
 
 temperature_sensitivity = 0.99
 method_sensitivity_acceptance = 0.99
 method_sensitivity_rejection = 0.95
 
-fill_up_iterations = 15
+fill_up_iterations = 40
 
 repair_max_attempts = 20
 
@@ -27,5 +27,5 @@ error_margin = 0.0001
 
 # Score parameters
 usage_multiplier = 1
-saw_dust_multiplier = -1.5
-unused_multiplier = -0.8
+saw_dust_multiplier = -0.0001
+unused_multiplier = 0

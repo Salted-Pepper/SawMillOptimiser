@@ -34,17 +34,21 @@ class ShapeType:
 
 
 class Shape:
-    def __init__(self, shape_type: ShapeType, x=None, y=None):
+    def __init__(self, shape_type: ShapeType, x=None, y=None, copy_id: int = None):
         global shape_id
         """
         :param width:
         :param height:
         :param x: x coordinate of bottom left corner of figure
         :param y: y coordinate of bottom left corner of figure
+        :param copy_id: Allows you to set the id of a shape to allow consistency across duplicated logs
         """
-        self.shape_id = shape_id
+        if copy_id is None:
+            self.shape_id = shape_id
+            shape_id += 1
+        else:
+            self.shape_id = copy_id
         self.type = shape_type
-        shape_id += 1
         self.width = shape_type.width
         self.height = shape_type.height
         self.ratio = shape_type.ratio
@@ -133,6 +137,8 @@ class Shape:
         self.log.add_shape(self)
 
     def remove_from_log(self):
+        if self.log is None:
+            raise ValueError(f"No log assigned to shape {self.shape_id}")
         logger.debug(f"Removing shape {self.shape_id} from log {self.log.log_id}")
         self.log.remove_shape(self)
         self.log = None

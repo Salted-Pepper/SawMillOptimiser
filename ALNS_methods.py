@@ -4,6 +4,7 @@ import constants
 import numpy as np
 import logging
 import datetime
+import math
 
 import ALNS_tools
 import testing_tools
@@ -135,14 +136,66 @@ def random_destroy(log: Log) -> bool:
 
 
 def random_cluster_destroy(log: Log) -> bool:
-    # TODO: Random cluster destroy - same as random destroy,
-    #  but selects cutout with random number of surrounding cutouts
     successful = False
+    removed_shape = select_random_shapes_from_log(log)
+
+    space_left = log.find_shapes_closest_to_shape(c_shape=removed_shape, orientation="left")
+    space_right = log.find_shapes_closest_to_shape(c_shape=removed_shape, orientation="right")
+    space_up = log.find_shapes_closest_to_shape(c_shape=removed_shape, orientation="up")
+    space_down = log.find_shapes_closest_to_shape(c_shape=removed_shape, orientation="down")
+
+    plane = random.choices(["horizontal", "vertical"], [0.5, 0.5], k=1)[0]
+
+    min_width_check = constants.min_width_shape_type.width
+    min_height_check = constants.min_height_shape_type.height
+
+    width_steps = int(np.floor(removed_shape.width / (min_width_check - 1)))
+    height_steps = int(np.floor(removed_shape.height / (min_height_check - 1)))
+
+    x_steps = ([removed_shape.x + i * min_width_check for i in range(width_steps + 1)]
+               + [removed_shape.x + removed_shape.width + constants.saw_kerf])
+    y_steps = ([removed_shape.y + j * min_width_check for j in range(height_steps + 1)]
+               + [removed_shape.y + removed_shape.height + constants.saw_kerf])
+    removed_shapes = [removed_shape]
+    if plane == "horizontal":
+        # remove shapes directly left and right of the shape
+        shapes_left = [s for s in log.shapes if s.x + s.width + constants.saw_kerf <= removed_shape.x]
+        shapes_right = [s for s in log.shapes if s.x >= removed_shape.x + removed_shape.width + constants.saw_kerf]
+        x_val = removed_shape.x - space_left - 2 * constants.saw_kerf
+        for y_val in y_steps:
+            for shape in shapes_left:
+                # Select x to be an x value just past the point where another shape's edge has been located
+                if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
+                    removed_shapes.append(shape)
+            for shape in shapes_right:
+                if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
+                    removed_shapes.append(shape)
+    else:
+        shapes_up = [s for s in log.shapes if s.y >= removed_shape.y + removed_shape.height + constants.saw_kerf]
+        shapes_down = [s for s in log.shapes if s.y + s.height + constants.saw_kerf <= removed_shape.y]
+        y_val = removed_shape.y - space_down - 2 * constants.saw_kerf
+        for x_val in x_steps:
+            for shape in shapes_up:
+                if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
+                    removed_shapes.append(shape)
+            for shape in shapes_down:
+                if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
+                    removed_shapes.append(shape)
+
+    if len(removed_shapes) > 0:
+        successful = True
+    debug_string = "Removed cluster containing: "
+    for shape in removed_shapes:
+        debug_string += f"{shape.shape_id}, "
+        shape.remove_from_log()
+        del shape
+
     return successful
 
 
 def subspace_destroy(log: Log, shape_types: list) -> bool:
     successful = False
+
     return successful
 
 
@@ -336,6 +389,7 @@ class Method:
         self.probability = 1
         self.method_used = False
         self.times_used = 0
+        self.total_attempted = 0
         self.goal = goal
 
     def method_failed(self):
@@ -351,6 +405,8 @@ class Method:
                 succeeded = tuck(self.name, log)
             elif self.name == "RANDOM":
                 succeeded = random_destroy(log)
+            elif self.name == "CLUSTER":
+                succeeded = random_cluster_destroy(log)
             elif self.name == "SUBSPACE":
                 succeeded = subspace_destroy(log, shape_types)
             elif self.name == "INEFFICIENCY":
@@ -365,11 +421,13 @@ class Method:
                 raise ValueError(f"ALNS Method {self.name} Not Implemented")
             if succeeded:
                 logger.debug(f"Method {self.name} succeeded in {attempts} attempts.")
+                self.total_attempted += attempts
                 return succeeded
             else:
                 attempts += 1
         # If we exceed max iterations, the method failed.
         logger.debug(f"Did not succeed using method {self.name} within the maximum iterations")
+        self.total_attempted += attempts
         return False
 
     def used(self):
@@ -382,7 +440,11 @@ def update_method_probability(methods: list, updated):
 
     for method in methods:
         if updated and method.used:
-            method.performance = method.performance * constants.method_sensitivity_acceptance
+            if method.total_attempted != 0:
+                method.performance = (method.performance * constants.method_sensitivity_acceptance *
+                                      math.sqrt(method.method_used / method.total_attempted))
+            else:
+                method.performance = method.performance * constants.method_sensitivity_acceptance
             method.method_used = False
         elif method.used:
             method.performance = method.performance * constants.method_sensitivity_rejection

@@ -72,11 +72,12 @@ class Log:
     def return_plot(self) -> tuple:
         return self.fig, self.ax
 
-    def show_plot(self, extra_text="") -> None:
+    def show_plot(self, extra_text="", show=True) -> None:
         global date
         self.plot_log()
         self.update_plot(extra_text)
-        self.fig.show()
+        if show:
+            self.fig.show()
 
     def save_log_plot(self):
         date_time = datetime.datetime.now()
@@ -119,7 +120,6 @@ class Log:
         return -1 / self.volume
 
     def remove_shape(self, shape: Shape) -> None:
-        logger.debug(f"Removing shape {shape.shape_id} from log {self.log_id}.")
         try:
             self.shapes.remove(shape)
             self.volume_used -= shape.get_volume()
