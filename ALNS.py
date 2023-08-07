@@ -54,9 +54,10 @@ def run_ALNS(logs: list, shape_types: list):
     while temperature > 0 and iteration <= constants.max_iterations:
 
         log = ALNS_tools.select_log(logs)
-        logger.debug(f"Going into iteration {iteration} with temperature {temperature}... Selected {log.log_id}")
+        logger.debug(f"Going into iteration {iteration} with temperature {temperature}... "
+                     f"Selected {log.log_id} with diameter {log.diameter}")
         # Invoke copy here to ensure changes do not apply unless new solution is accepted
-        log_new = Log(log.diameter)
+        log_new = Log(log.diameter, copy_id=log.log_id)
         for shape in log.shapes:
             Shape(shape_type=shape.type, x=shape.x, y=shape.y, copy_id=shape.shape_id).assign_to_log(log_new)
 

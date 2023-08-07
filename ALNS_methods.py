@@ -335,12 +335,13 @@ def buddy_extension_repair(log: Log, shape_types: list) -> tuple:
 
     shape = select_random_shapes_from_log(log)
     sk = constants.saw_kerf
-    location_pairs = [[shape.x, shape.y - 2*sk], [shape.x - 2*sk, shape.y],  # Bot left
-                      [shape.x, shape.y + shape.height + 2*sk], [shape.x - 2*sk, shape.y + shape.height],  # Top left
-                      [shape.x + shape.width, shape.y + shape.height + 2*sk],
-                      [shape.x + shape.width + 2*sk, shape.y + shape.height],  # Top Right
-                      [shape.x + shape.width + 2*sk, shape.y], [shape.x + shape.width, shape.y - 2*sk]]  # Bot Right
-    rect_sizes = [[]]
+    location_pairs = [[shape.x, shape.y - 2 * sk], [shape.x - 2 * sk, shape.y],  # Bot left
+                      [shape.x, shape.y + shape.height + 2 * sk], [shape.x - 2 * sk, shape.y + shape.height],
+                      # Top left
+                      [shape.x + shape.width, shape.y + shape.height + 2 * sk],
+                      [shape.x + shape.width + 2 * sk, shape.y + shape.height],  # Top Right
+                      [shape.x + shape.width + 2 * sk, shape.y], [shape.x + shape.width, shape.y - 2 * sk]]  # Bot Right
+    rect_sizes = []
     for location in location_pairs:
         if log.check_if_point_in_log(location[0], location[1]):
             space_left = log.find_distance_to_closest_shape_from_point(x=location[0],
@@ -369,8 +370,23 @@ def buddy_extension_repair(log: Log, shape_types: list) -> tuple:
     space_up = largest_location_data[5]
     space_down = largest_location_data[6]
 
-    successful = ALNS_tools.fit_defined_rectangle(left_most_x=x - space_left, right_most_x=x + space_right,
-                                                  lowest_y=y - space_down, highest_y=y + space_up,
+    x_0 = x - space_left
+    x_1 = x + space_right
+    y_0 = y - space_down
+    y_1 = y + space_up
+    corners = [log.check_if_point_in_log(x=x_0, y=y_0),
+               log.check_if_point_in_log(x=x_0, y=y_1),
+               log.check_if_point_in_log(x=x_1, y=y_0),
+               log.check_if_point_in_log(x=x_1, y=y_1)]
+    # Ensure all corners are in the log, if not, prioritize maintaining dimension with minimal space available
+    if not all(corners):
+        if y_1 - y_0 > x_1 - x_0:
+            x_0, x_1, y_0, y_1 = ALNS_tools.fit_points_in_boundaries(x_0, x_1, y_0, y_1, priority="width", log=log)
+        else:
+            x_0, x_1, y_0, y_1 = ALNS_tools.fit_points_in_boundaries(x_0, x_1, y_0, y_1, priority="height", log=log)
+
+    successful = ALNS_tools.fit_defined_rectangle(left_most_x=x_0, right_most_x=x_1,
+                                                  lowest_y=y_0, highest_y=y_1,
                                                   log=log, shape_types=shape_types)
 
     t_1 = time.perf_counter()

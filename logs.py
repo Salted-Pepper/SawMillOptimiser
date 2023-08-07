@@ -19,12 +19,15 @@ log_id = 0
 
 
 class Log:
-    def __init__(self, diameter: float) -> None:
+    def __init__(self, diameter: float, copy_id: int = None) -> None:
         global log_id
 
-        # Log data
-        self.log_id = log_id
-        log_id += 1
+        # Keep track of copies of logs using same id
+        if copy_id is None:
+            self.log_id = log_id
+            log_id += 1
+        else:
+            self.log_id = copy_id
         self.diameter = diameter
 
         # Efficiency Measures
