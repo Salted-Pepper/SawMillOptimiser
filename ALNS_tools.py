@@ -34,7 +34,7 @@ def update_log_scores(logs: list) -> None:
 
 
 def calculate_log_score(log: Log):
-    # TODO: In scoring add method for "efficient" space usage - maybe check central square usage
+    # TODO: In scoring add method for "efficient" space usage - maybe check central square usage (Find empty spaces)
     log.score = log.volume_used * constants.usage_multiplier \
                 + log.saw_dust * constants.saw_dust_multiplier \
                 + (log.volume - log.volume_used) * constants.unused_multiplier
@@ -437,3 +437,13 @@ def check_feasibility(list_of_logs):
     else:
         print("Incorrect shape placement!")
         return False
+
+
+def report_method_stats(methods: list) -> None:
+    for m in methods:
+        logger.debug(f"Method {m.name} has been called {m.times_called}. "
+                     f"Applied a total of {m.total_attempted} times. "
+                     f"Average duration "
+                     f"- Succes: {m.seconds_success / m.total_succeeded} "
+                     f"- Failure: {m.seconds_failure / (m.total_attempted - m.total_succeeded)}"
+                     f"- Total: {(m.seconds_failure + m.seconds_failure) / m.total_attempted}")

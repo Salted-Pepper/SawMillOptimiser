@@ -250,6 +250,84 @@ class Log:
             raise NotImplementedError(f"No orientation {orientation}")
         return min_space
 
+    def find_distance_to_closest_shape_from_point(self, x: float, y: float, orientation: str) -> float:
+        """
+        :param x:
+        :param y:
+        :param orientation: left, right, up, down
+        :return:
+        """
+        if orientation == "left":
+            # Set log boundaries for the shape
+            min_space, _ = self.calculate_edge_positions_on_circle(y)
+            min_space = x - min_space
+            other_shapes = [s for s in self.shapes if s.x + s.width + constants.saw_kerf <= x + constants.error_margin]
+            # Check if shapes are on the same height, and whether the shape is on the left (direction of orientation)
+            for shape in other_shapes:
+                if not (shape.y + shape.height + constants.saw_kerf <= y or shape.y >= y):
+                    if x - (shape.x + shape.width + constants.saw_kerf) < min_space:
+                        min_space = x - (shape.x + shape.width + constants.saw_kerf)
+                        if min_space < -constants.error_margin:
+                            raise ValueError
+            # Check Log Boundaries
+            minimum_x_left, _ = self.calculate_edge_positions_on_circle(y)
+            if x - minimum_x_left < min_space:
+                min_space = x - minimum_x_left
+
+        elif orientation == "right":
+            _, max_space = self.calculate_edge_positions_on_circle(y)
+            min_space = max_space - x
+            other_shapes = [s for s in self.shapes if s.x + constants.error_margin >= x]
+            for shape in other_shapes:
+                if not (shape.y + shape.height + constants.saw_kerf <= y or
+                        shape.y >= y):
+                    if shape.x - x < min_space:
+                        min_space = shape.x - x
+                        if min_space < -constants.error_margin:
+                            raise ValueError
+            # Check Log Boundaries
+            _, maximum_x_right = self.calculate_edge_positions_on_circle(y)
+            if maximum_x_right - x < min_space:
+                min_space = maximum_x_right - x
+
+        elif orientation == "up":
+            _, max_space = self.calculate_edge_positions_on_circle(x)
+            min_space = max_space - y
+            other_shapes = [s for s in self.shapes if s.y + constants.error_margin >= y]
+            for shape in other_shapes:
+                if not shape.x + shape.width + constants.saw_kerf <= x or shape.x >= x:
+                    if shape.y - y < min_space:
+                        min_space = shape.y - y
+                        if min_space < -constants.error_margin:
+                            raise ValueError
+            # Check Log Boundaries
+            _, maximum_y_top = self.calculate_edge_positions_on_circle(x)
+            if maximum_y_top - y < min_space:
+                min_space = maximum_y_top - y
+                if min_space < 0:
+                    raise ValueError
+
+        elif orientation == "down":
+            min_space, _ = self.calculate_edge_positions_on_circle(x)
+            min_space = y - min_space
+            other_shapes = [s for s in self.shapes if s.y + s.height + constants.saw_kerf <=
+                            y + constants.error_margin]
+            for shape in other_shapes:
+                if not shape.x + shape.width + constants.saw_kerf <= x or shape.x >= x:
+                    if y - (shape.y + shape.height + constants.saw_kerf) < min_space:
+                        min_space = y - (shape.y + shape.height + constants.saw_kerf)
+                        if min_space < -constants.error_margin:
+                            raise ValueError
+            # Check Log Boundaries
+            minimum_y_bot, _ = self.calculate_edge_positions_on_circle(x)
+            if y - minimum_y_bot < min_space:
+                min_space = y - minimum_y_bot
+
+        else:
+            logger.error(f"Unknown Orientation {orientation}")
+            raise NotImplementedError(f"No orientation {orientation}")
+        return min_space
+
 
 def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
     sk = constants.saw_kerf

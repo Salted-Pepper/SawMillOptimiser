@@ -9,7 +9,7 @@ rect_text_margin = 0.01
 ALNS Parameters
 """
 starting_temperature = 100
-max_iterations = 600
+max_iterations = 300
 
 temperature_sensitivity = 0.99
 method_sensitivity_acceptance = 0.99
@@ -24,6 +24,8 @@ min_height_shape_type = None
 smallest_total_shapes = []
 
 error_margin = 0.0001
+
+centring_attempts = 10
 
 # Score parameters
 usage_multiplier = 1

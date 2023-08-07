@@ -124,6 +124,11 @@ def run_ALNS(logs: list, shape_types: list):
             logger.debug(f"New solution has been declined, delta of {delta} \n \n")
             pass
 
+        # Push shapes to centre at end
+        for log in logs:
+            for _ in range(constants.centring_attempts):
+                tuck_methods[0].execute(log, shape_types)
+
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
         temperature = ALNS_tools.update_temperature(temperature, accept_new_solution, delta, score)
         logger.debug(f"New temperature is {temperature: .3f}, new solution accepted: {accept_new_solution},"
@@ -139,8 +144,7 @@ def run_ALNS(logs: list, shape_types: list):
 
         # TODO: Update destroy/repair degree based on temperature
 
-    for method in repair_methods + destroy_methods + tuck_methods:
-        logger.debug(f"Method {method.name} was called {method.times_used} times.")
+    ALNS_tools.report_method_stats(repair_methods + destroy_methods + tuck_methods)
 
     return solution_quality_df
 

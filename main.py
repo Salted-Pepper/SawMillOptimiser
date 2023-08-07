@@ -47,6 +47,8 @@ if __name__ == '__main__':
     logs.append(Log(503))
     logs.append(Log(487))
     logs.append(Log(640))
+    logs.append(Log(750))
+    logs.append(Log(835))
 
     """
     Import Shape Data
@@ -79,3 +81,5 @@ if __name__ == '__main__':
     shape_types.extend(transposed_shapes)
 
     apply_ALNS(logs, shape_types)
+
+    print("Completed Optimisation Procedure!")

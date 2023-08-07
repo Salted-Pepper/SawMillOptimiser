@@ -5,6 +5,7 @@ import numpy as np
 import logging
 import datetime
 import math
+import time
 
 import ALNS_tools
 import testing_tools
@@ -18,7 +19,7 @@ logger = logging.getLogger("ALNS_Methods")
 logger.setLevel(logging.DEBUG)
 
 
-def tuck(name: str, log: Log):
+def tuck(name: str, log: Log) -> tuple:
     """
     Selects a random number of shapes in the log.
     Tries to move all shapes as much as possible in a certain direction.
@@ -27,6 +28,8 @@ def tuck(name: str, log: Log):
     For the centre direction it tries to shift towards the centre
     :return:
     """
+    t_0 = time.perf_counter()
+
     successful = False
 
     number_of_shapes = random.randint(0, len(log.shapes))
@@ -39,7 +42,7 @@ def tuck(name: str, log: Log):
             centre_x = shape.x + shape.width / 2
             centre_y = shape.y + shape.height / 2
 
-            # Shift left is shape is right of centre, otherwise shift right
+            # Shift left if shape is right of centre, otherwise shift right
             # Can't move both areas at the same time, as there could be rectangles in the corners
             if centre_x > centre_point:
                 space_x = -log.find_shapes_closest_to_shape(c_shape=shape, orientation="left")
@@ -108,21 +111,23 @@ def tuck(name: str, log: Log):
                 successful = True
                 logger.debug(f"Moved shape {shape.shape_id} x: {shape.y} to {shape.y + space_down} using DOWN")
                 shape.y = shape.y - space_down
+    t_1 = time.perf_counter()
+    return successful, t_1 - t_0
 
-    return successful
 
-
-def random_destroy(log: Log) -> bool:
+def random_destroy(log: Log) -> tuple:
     """
     Randomly removes a shape from the log. Selects a shape based on distance to the centre.
     The further the centre of a shape is from the centre of the log, the higher the likelihood of it being picked.
     :param log:
     :return:
     """
+    t_0 = time.perf_counter()
     successful = False
 
     if len(log.shapes) == 0:
-        return successful
+        t_1 = time.perf_counter()
+        return successful, t_1 - t_0
 
     removed_shape = select_random_shapes_from_log(log)
 
@@ -132,10 +137,12 @@ def random_destroy(log: Log) -> bool:
     removed_shape.remove_from_log()
     del removed_shape
     successful = True
-    return successful
+    t_1 = time.perf_counter()
+    return successful, t_1 - t_0
 
 
-def random_cluster_destroy(log: Log) -> bool:
+def random_cluster_destroy(log: Log) -> tuple:
+    t_0 = time.perf_counter()
     successful = False
     removed_shape = select_random_shapes_from_log(log)
 
@@ -190,21 +197,27 @@ def random_cluster_destroy(log: Log) -> bool:
         shape.remove_from_log()
         del shape
 
-    return successful
+    t_1 = time.perf_counter()
+    return successful, t_1 - t_0
 
 
-def subspace_destroy(log: Log, shape_types: list) -> bool:
+def subspace_destroy(log: Log, shape_types: list) -> tuple:
     successful = False
+    t_0 = time.perf_counter()
 
-    return successful
+    t_1 = time.perf_counter()
+    return successful, t_1 - t_0
 
 
-def inefficiency_destroy(log: Log, shape_types: list) -> bool:
+def inefficiency_destroy(log: Log, shape_types: list) -> tuple:
     successful = False
-    return successful
+    t_0 = time.perf_counter()
+
+    t_1 = time.perf_counter()
+    return successful, t_1 - t_0
 
 
-def random_point_expansion(log: Log, shape_types: list) -> bool:
+def random_point_expansion(log: Log, shape_types: list) -> tuple:
     """
     RPE selects a random point in the log, it then calculates the maximum rectangle it can create until there
     is a collision in every direction. It then checks if this area is empty of shapes. If so, it applies an LP to
@@ -213,6 +226,7 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
     :param shape_types:
     :return:
     """
+    t_0 = time.perf_counter()
     successful = False
     found_point = False
 
@@ -330,10 +344,13 @@ def random_point_expansion(log: Log, shape_types: list) -> bool:
         for shape in new_shapes_high:
             shape.assign_to_log(log)
         successful = True
-    return successful
+
+    t_1 = time.perf_counter()
+    return successful, t_1 - t_0
 
 
-def single_extension_repair(log: Log, shape_types: list) -> bool:
+def single_extension_repair(log: Log, shape_types: list) -> tuple:
+    t_0 = time.perf_counter()
     successful = False
 
     shape = select_random_shapes_from_log(log)
@@ -342,7 +359,8 @@ def single_extension_repair(log: Log, shape_types: list) -> bool:
                         (s.height >= shape.height and s.width > shape.width)]
 
     if len(candidate_shapes) == 0:
-        return successful
+        t_1 = time.perf_counter()
+        return successful, t_1 - t_0
 
     space_left = log.find_shapes_closest_to_shape(shape, orientation="left")
     space_right = log.find_shapes_closest_to_shape(shape, orientation="right")
@@ -357,7 +375,8 @@ def single_extension_repair(log: Log, shape_types: list) -> bool:
     higher_pieces = [s for s in candidate_shapes if s.width == shape.width
                      and s.height <= total_vertical_space]
     if len(wider_pieces) == 0 == len(higher_pieces):
-        return successful
+        t_1 = time.perf_counter()
+        return successful, t_1 - t_0
 
     shape_type = max(wider_pieces + higher_pieces, key=lambda option: option.width * option.height)
     # Either the new piece is higher, and it stays at same x, or it's wider and stays at same y
@@ -371,12 +390,31 @@ def single_extension_repair(log: Log, shape_types: list) -> bool:
                  f"in log {log.log_id}")
     shape.remove_from_log()
     successful = True
-    return successful
+    t_1 = time.perf_counter()
+    return successful, t_1 - t_0
 
 
-def buddy_extension_repair(log: Log, shape_types: list) -> bool:
+def buddy_extension_repair(log: Log, shape_types: list) -> tuple:
+    t_0 = time.perf_counter()
     successful = False
-    return successful
+
+    shape = select_random_shapes_from_log(log)
+    sk = constants.saw_kerf
+    location_pairs = [[shape.x, shape.y - 2*sk], [shape.x - 2*sk, shape.y],  # Bot left
+                      [shape.x, shape.y + shape.height + 2*sk], [shape.x - 2*sk, shape.y + shape.height],  # Top left
+                      [shape.x + shape.width, shape.y + shape.height + 2*sk],
+                      [shape.x + shape.width + 2*sk, shape.y + shape.height],  # Top Right
+                      [shape.x + shape.width + 2*sk, shape.y], [shape.x + shape.width, shape.y - 2*sk]]  # Bot Right
+    rect_sizes = []
+    for location in location_pairs:
+        space_left = log.find_distance_to_closest_shape_from_point(x=location[0], y=location[1], orientation="left")
+        space_right = log.find_distance_to_closest_shape_from_point(x=location[0], y=location[1], orientation="right")
+        space_up = log.find_distance_to_closest_shape_from_point(x=location[0], y=location[1], orientation="up")
+        space_down = log.find_distance_to_closest_shape_from_point(x=location[0], y=location[1], orientation="down")
+        rect_sizes.append((space_right - space_left) * (space_up - space_down))
+
+    t_1 = time.perf_counter()
+    return successful, t_1 - t_0
 
 
 class Method:
@@ -388,54 +426,61 @@ class Method:
         self.performance = 100
         self.probability = 1
         self.method_used = False
-        self.times_used = 0
+        self.times_called = 0
         self.total_attempted = 0
+        self.total_succeeded = 0
         self.goal = goal
+        self.seconds_success = 0
+        self.seconds_failure = 0
 
-    def method_failed(self):
+    def method_failed(self) -> None:
         self.performance = self.performance * self.failure_adjust_rate
 
-    def method_success(self):
+    def method_success(self) -> None:
         self.performance = self.performance * self.success_adjust_rate
 
     def execute(self, log, shape_types: list) -> bool:
         attempts = 0
         while attempts < constants.repair_max_attempts:
             if self.name.startswith("TUCK"):
-                succeeded = tuck(self.name, log)
+                succeeded, duration = tuck(self.name, log)
             elif self.name == "RANDOM":
-                succeeded = random_destroy(log)
+                succeeded, duration = random_destroy(log)
             elif self.name == "CLUSTER":
-                succeeded = random_cluster_destroy(log)
+                succeeded, duration = random_cluster_destroy(log)
             elif self.name == "SUBSPACE":
-                succeeded = subspace_destroy(log, shape_types)
+                succeeded, duration = subspace_destroy(log, shape_types)
             elif self.name == "INEFFICIENCY":
-                succeeded = inefficiency_destroy(log, shape_types)
+                succeeded, duration = inefficiency_destroy(log, shape_types)
             elif self.name == "RPE":
-                succeeded = random_point_expansion(log, shape_types)
+                succeeded, duration = random_point_expansion(log, shape_types)
             elif self.name == "SER":
-                succeeded = single_extension_repair(log, shape_types)
+                succeeded, duration = single_extension_repair(log, shape_types)
             elif self.name == "BER":
-                succeeded = buddy_extension_repair(log, shape_types)
+                succeeded, duration = buddy_extension_repair(log, shape_types)
             else:
                 raise ValueError(f"ALNS Method {self.name} Not Implemented")
+
             if succeeded:
                 logger.debug(f"Method {self.name} succeeded in {attempts} attempts.")
                 self.total_attempted += attempts
+                self.total_succeeded += 1
+                self.seconds_success += duration
                 return succeeded
             else:
                 attempts += 1
+                self.seconds_failure += duration
         # If we exceed max iterations, the method failed.
         logger.debug(f"Did not succeed using method {self.name} within the maximum iterations")
         self.total_attempted += attempts
         return False
 
-    def used(self):
+    def used(self) -> None:
         self.method_used = True
-        self.times_used += 1
+        self.times_called += 1
 
 
-def update_method_probability(methods: list, updated):
+def update_method_probability(methods: list, updated) -> None:
     total_performance = sum([method.performance for method in methods])
 
     for method in methods:
@@ -451,3 +496,4 @@ def update_method_probability(methods: list, updated):
 
     for method in methods:
         method.probability = method.performance / total_performance
+
