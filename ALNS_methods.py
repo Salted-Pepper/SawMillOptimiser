@@ -8,7 +8,6 @@ import math
 import time
 
 import ALNS_tools
-import testing_tools
 from shapes import Shape
 from logs import Log, select_random_shapes_from_log
 
@@ -168,23 +167,26 @@ def random_cluster_destroy(log: Log) -> tuple:
         # remove shapes directly left and right of the shape
         shapes_left = [s for s in log.shapes if s.x + s.width + constants.saw_kerf <= removed_shape.x]
         shapes_right = [s for s in log.shapes if s.x >= removed_shape.x + removed_shape.width + constants.saw_kerf]
-        x_val = removed_shape.x - space_left - 2 * constants.saw_kerf
+
         for y_val in y_steps:
+            x_val = removed_shape.x - space_left - 2 * constants.saw_kerf
             for shape in shapes_left:
                 # Select x to be an x value just past the point where another shape's edge has been located
                 if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
                     removed_shapes.append(shape)
+            x_val = removed_shape.x + removed_shape.width + space_right + 2 * constants.saw_kerf
             for shape in shapes_right:
                 if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
                     removed_shapes.append(shape)
     else:
         shapes_up = [s for s in log.shapes if s.y >= removed_shape.y + removed_shape.height + constants.saw_kerf]
         shapes_down = [s for s in log.shapes if s.y + s.height + constants.saw_kerf <= removed_shape.y]
-        y_val = removed_shape.y - space_down - 2 * constants.saw_kerf
         for x_val in x_steps:
+            y_val = removed_shape.y - space_down - 2 * constants.saw_kerf
             for shape in shapes_up:
                 if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
                     removed_shapes.append(shape)
+            y_val = removed_shape.y + removed_shape.height + space_up + 2 * constants.saw_kerf
             for shape in shapes_down:
                 if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
                     removed_shapes.append(shape)
@@ -276,74 +278,7 @@ def random_point_expansion(log: Log, shape_types: list) -> tuple:
                 right_most_x = shape.x - constants.saw_kerf
     # logger.debug(f"After checking shape collisions x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
     #              f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
-    # Check if rectangle is empty
-    violating_shapes = ALNS_tools.check_if_rectangle_empty(x_0=left_most_x, x_1=right_most_x,
-                                                           y_0=lowest_y, y_1=highest_y, log=log)
-
-    # For all violating shapes we have to make a cut in the plane to ensure the rectangle is clean
-    for shape in violating_shapes:
-        # Check if shape still violates cut, as previous cuts could have put this shape out of violation
-        violates = ALNS_tools.check_if_shape_in_rectangle(shape=shape, x_0=left_most_x, x_1=right_most_x,
-                                                          y_0=lowest_y, y_1=highest_y)
-        if not violates:
-            continue
-
-        # There are 4 possible cuts - find the cut that loses the least surface area
-        cut_upper_off = (right_most_x - left_most_x) * ((shape.y - constants.saw_kerf) - lowest_y)
-        cut_lower_off = (right_most_x - left_most_x) * (highest_y - (shape.y + shape.height + constants.saw_kerf))
-        cut_left_off = (right_most_x - (shape.x + shape.width + constants.saw_kerf)) * (highest_y - lowest_y)
-        cut_right_off = ((shape.x - constants.saw_kerf) - left_most_x)
-        cuts = [cut_upper_off, cut_lower_off, cut_left_off, cut_right_off]
-
-        # Update Values Based On Selected Optimal Cut
-        largest_remaining_cut = max(cuts)
-        if cut_upper_off == largest_remaining_cut:
-            highest_y = shape.y - constants.saw_kerf
-        elif cut_lower_off == largest_remaining_cut:
-            lowest_y = shape.y + shape.height + constants.saw_kerf
-        elif cut_left_off == largest_remaining_cut:
-            left_most_x = shape.x + shape.width + constants.saw_kerf
-        else:
-            right_most_x = shape.x - constants.saw_kerf
-
-    # logger.debug(f"Post Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
-    #              f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
-
-    # Recheck the log boundaries
-    (left_x_width, right_x_width,
-     low_y_width, top_y_width) = ALNS_tools.fit_points_in_boundaries(left_most_x, right_most_x,
-                                                                     lowest_y, highest_y,
-                                                                     priority="width",
-                                                                     log=log)
-    (left_x_height, right_x_height,
-     low_y_height, top_y_height) = ALNS_tools.fit_points_in_boundaries(left_most_x, right_most_x,
-                                                                       lowest_y, highest_y,
-                                                                       priority="height",
-                                                                       log=log)
-    wide_candidate_shapes = [s for s in shape_types if s.width <= right_x_width - left_x_width
-                             and s.height <= top_y_width - low_y_width]
-    high_candidate_shapes = [s for s in shape_types if s.width <= right_x_height - left_x_height
-                             and s.height <= top_y_height - low_y_height]
-    new_shapes_wide, usage_wide = ALNS_tools.fit_shapes_in_rect_using_lp(x_min=left_x_width, x_max=right_x_width,
-                                                                         y_min=low_y_width, y_max=top_y_width,
-                                                                         candidate_shapes=wide_candidate_shapes,
-                                                                         shape_types=shape_types, shapes=[])
-    new_shapes_high, usage_high = ALNS_tools.fit_shapes_in_rect_using_lp(x_min=left_x_height, x_max=right_x_height,
-                                                                         y_min=low_y_height, y_max=top_y_height,
-                                                                         candidate_shapes=high_candidate_shapes,
-                                                                         shape_types=shape_types, shapes=[])
-
-    if usage_wide == usage_high == 0:
-        # logger.debug("No feasible solution")
-        pass
-    elif usage_wide > usage_high:
-        for shape in new_shapes_wide:
-            shape.assign_to_log(log)
-        successful = True
-    elif usage_wide < usage_high:
-        for shape in new_shapes_high:
-            shape.assign_to_log(log)
-        successful = True
+    successful = ALNS_tools.fit_defined_rectangle(left_most_x, right_most_x, lowest_y, highest_y, log, shape_types)
 
     t_1 = time.perf_counter()
     return successful, t_1 - t_0
@@ -405,13 +340,38 @@ def buddy_extension_repair(log: Log, shape_types: list) -> tuple:
                       [shape.x + shape.width, shape.y + shape.height + 2*sk],
                       [shape.x + shape.width + 2*sk, shape.y + shape.height],  # Top Right
                       [shape.x + shape.width + 2*sk, shape.y], [shape.x + shape.width, shape.y - 2*sk]]  # Bot Right
-    rect_sizes = []
+    rect_sizes = [[]]
     for location in location_pairs:
-        space_left = log.find_distance_to_closest_shape_from_point(x=location[0], y=location[1], orientation="left")
-        space_right = log.find_distance_to_closest_shape_from_point(x=location[0], y=location[1], orientation="right")
-        space_up = log.find_distance_to_closest_shape_from_point(x=location[0], y=location[1], orientation="up")
-        space_down = log.find_distance_to_closest_shape_from_point(x=location[0], y=location[1], orientation="down")
-        rect_sizes.append((space_right - space_left) * (space_up - space_down))
+        if log.check_if_point_in_log(location[0], location[1]):
+            space_left = log.find_distance_to_closest_shape_from_point(x=location[0],
+                                                                       y=location[1],
+                                                                       orientation="left")
+            space_right = log.find_distance_to_closest_shape_from_point(x=location[0],
+                                                                        y=location[1],
+                                                                        orientation="right")
+            space_up = log.find_distance_to_closest_shape_from_point(x=location[0],
+                                                                     y=location[1],
+                                                                     orientation="up")
+            space_down = log.find_distance_to_closest_shape_from_point(x=location[0],
+                                                                       y=location[1],
+                                                                       orientation="down")
+            rect_sizes.append([location[0], location[1],
+                               (space_right - space_left) * (space_up - space_down),
+                               space_left, space_right, space_up, space_down])
+        else:
+            rect_sizes.append([location[0], location[1], 0, 0, 0, 0, 0])
+
+    largest_location_data = max(rect_sizes, key=lambda val: val[2])
+    x = largest_location_data[0]
+    y = largest_location_data[1]
+    space_left = largest_location_data[3]
+    space_right = largest_location_data[4]
+    space_up = largest_location_data[5]
+    space_down = largest_location_data[6]
+
+    successful = ALNS_tools.fit_defined_rectangle(left_most_x=x - space_left, right_most_x=x + space_right,
+                                                  lowest_y=y - space_down, highest_y=y + space_up,
+                                                  log=log, shape_types=shape_types)
 
     t_1 = time.perf_counter()
     return successful, t_1 - t_0
@@ -461,6 +421,8 @@ class Method:
             else:
                 raise ValueError(f"ALNS Method {self.name} Not Implemented")
 
+            attempts += 1
+
             if succeeded:
                 logger.debug(f"Method {self.name} succeeded in {attempts} attempts.")
                 self.total_attempted += attempts
@@ -468,7 +430,6 @@ class Method:
                 self.seconds_success += duration
                 return succeeded
             else:
-                attempts += 1
                 self.seconds_failure += duration
         # If we exceed max iterations, the method failed.
         logger.debug(f"Did not succeed using method {self.name} within the maximum iterations")
@@ -496,4 +457,3 @@ def update_method_probability(methods: list, updated) -> None:
 
     for method in methods:
         method.probability = method.performance / total_performance
-

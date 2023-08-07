@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.colors as mcolors
 import logging

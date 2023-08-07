@@ -194,11 +194,11 @@ def find_orientation_from_points(centre: float, x: float, y: float) -> str:
 
     if x >= centre and y >= centre:
         orientation = "NE"
-    elif x < centre and y >= centre:
+    elif x < centre <= y:
         orientation = "NW"
     elif x < centre and y < centre:
         orientation = "SW"
-    elif x >= centre and y < centre:
+    elif x >= centre > y:
         orientation = "SE"
     else:
         raise ValueError(f"No Orientation defined for ({x}, {y})")
@@ -240,7 +240,7 @@ def check_if_rectangle_empty(x_0: float, x_1: float, y_0: float, y_1: float, log
 
 
 def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max: float,
-                                candidate_shapes: list, shape_types: list, shapes: list) -> tuple:
+                                candidate_shapes: list, shape_types: list, shapes: list = None) -> tuple:
     """
     This function applies an LP solver to a given space, optimising the space for the given candidate shapes.
     The given space, described by (x,y)-values, includes the saw kerf on the sides.
@@ -256,6 +256,9 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
     :return shapes: List of added shapes
     """
     solutions = []
+
+    if shapes is None:
+        shapes = []
 
     width = x_max - x_min - 2 * constants.saw_kerf
     height = y_max - y_min - 2 * constants.saw_kerf
@@ -416,7 +419,7 @@ def plot_iteration_data(logs: list, df: pd.DataFrame):
     fig, ax = plt.subplots()
     for log in range(len(logs)):
         df_log = df[df["log"] == log]
-        ax.plot(df_log["iteration"], df_log["efficiency"])
+        ax.plot(df_log["iteration"], df_log["efficiency"], label=f"{log}")
         ax.set_title("Efficiency Per Log")
         ax.set_xlabel("Iteration")
         ax.set_ylabel("Efficiency")
@@ -441,9 +444,109 @@ def check_feasibility(list_of_logs):
 
 def report_method_stats(methods: list) -> None:
     for m in methods:
-        logger.debug(f"Method {m.name} has been called {m.times_called}. "
+        try:
+            avg_success_time = m.seconds_success / m.total_succeeded
+        except ZeroDivisionError:
+            avg_success_time = 0
+        try:
+            avg_failure_time = m.seconds_failure / (m.total_attempted - m.total_succeeded)
+        except ZeroDivisionError:
+            avg_failure_time = 0
+        try:
+            total_avg_time = (m.seconds_failure + m.seconds_failure) / m.total_attempted
+        except ZeroDivisionError:
+            total_avg_time = 0
+
+        logger.debug(f"Method {m.name} has been called {m.times_called} times. "
                      f"Applied a total of {m.total_attempted} times. "
                      f"Average duration "
-                     f"- Succes: {m.seconds_success / m.total_succeeded} "
-                     f"- Failure: {m.seconds_failure / (m.total_attempted - m.total_succeeded)}"
-                     f"- Total: {(m.seconds_failure + m.seconds_failure) / m.total_attempted}")
+                     f"- Succes: {avg_success_time} "
+                     f"- Failure: {avg_failure_time}"
+                     f"- Total: {total_avg_time}")
+
+
+def fit_defined_rectangle(left_most_x: float, right_most_x: float,
+                          lowest_y: float, highest_y: float, log: Log,
+                          shape_types):
+    """
+    This function creates shapes to fit a given rectangle at a defined location in a log.
+    It will check if the rectangle contains any other shape and truncate where necessary.
+    It will then use an LP to fill the space with shapes.
+    :param left_most_x:
+    :param right_most_x:
+    :param lowest_y:
+    :param highest_y:
+    :param log:
+    :param shape_types:
+    :return:
+    """
+    successful = False
+    # Check if rectangle is empty
+    violating_shapes = check_if_rectangle_empty(x_0=left_most_x, x_1=right_most_x,
+                                                y_0=lowest_y, y_1=highest_y, log=log)
+
+    # For all violating shapes we have to make a cut in the plane to ensure the rectangle is clean
+    for shape in violating_shapes:
+        # Check if shape still violates cut, as previous cuts could have put this shape out of violation
+        violates = check_if_shape_in_rectangle(shape=shape, x_0=left_most_x, x_1=right_most_x,
+                                               y_0=lowest_y, y_1=highest_y)
+        if not violates:
+            continue
+
+        # There are 4 possible cuts - find the cut that loses the least surface area
+        cut_upper_off = (right_most_x - left_most_x) * ((shape.y - constants.saw_kerf) - lowest_y)
+        cut_lower_off = (right_most_x - left_most_x) * (highest_y - (shape.y + shape.height + constants.saw_kerf))
+        cut_left_off = (right_most_x - (shape.x + shape.width + constants.saw_kerf)) * (highest_y - lowest_y)
+        cut_right_off = ((shape.x - constants.saw_kerf) - left_most_x)
+        cuts = [cut_upper_off, cut_lower_off, cut_left_off, cut_right_off]
+
+        # Update Values Based On Selected Optimal Cut
+        largest_remaining_cut = max(cuts)
+        if cut_upper_off == largest_remaining_cut:
+            highest_y = shape.y - constants.saw_kerf
+        elif cut_lower_off == largest_remaining_cut:
+            lowest_y = shape.y + shape.height + constants.saw_kerf
+        elif cut_left_off == largest_remaining_cut:
+            left_most_x = shape.x + shape.width + constants.saw_kerf
+        else:
+            right_most_x = shape.x - constants.saw_kerf
+
+    # logger.debug(f"Post Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
+    #              f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
+
+    # Recheck the log boundaries
+    (left_x_width, right_x_width,
+     low_y_width, top_y_width) = fit_points_in_boundaries(left_most_x, right_most_x,
+                                                          lowest_y, highest_y,
+                                                          priority="width",
+                                                          log=log)
+    (left_x_height, right_x_height,
+     low_y_height, top_y_height) = fit_points_in_boundaries(left_most_x, right_most_x,
+                                                            lowest_y, highest_y,
+                                                            priority="height",
+                                                            log=log)
+    wide_candidate_shapes = [s for s in shape_types if s.width <= right_x_width - left_x_width
+                             and s.height <= top_y_width - low_y_width]
+    high_candidate_shapes = [s for s in shape_types if s.width <= right_x_height - left_x_height
+                             and s.height <= top_y_height - low_y_height]
+    new_shapes_wide, usage_wide = fit_shapes_in_rect_using_lp(x_min=left_x_width, x_max=right_x_width,
+                                                              y_min=low_y_width, y_max=top_y_width,
+                                                              candidate_shapes=wide_candidate_shapes,
+                                                              shape_types=shape_types, shapes=[])
+    new_shapes_high, usage_high = fit_shapes_in_rect_using_lp(x_min=left_x_height, x_max=right_x_height,
+                                                              y_min=low_y_height, y_max=top_y_height,
+                                                              candidate_shapes=high_candidate_shapes,
+                                                              shape_types=shape_types, shapes=[])
+
+    if usage_wide == usage_high == 0:
+        # logger.debug("No feasible solution")
+        pass
+    elif usage_wide > usage_high:
+        for shape in new_shapes_wide:
+            shape.assign_to_log(log)
+        successful = True
+    elif usage_wide < usage_high:
+        for shape in new_shapes_high:
+            shape.assign_to_log(log)
+        successful = True
+    return successful

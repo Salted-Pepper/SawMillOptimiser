@@ -129,6 +129,10 @@ class Log:
                   f"Error {e}")
 
     def check_if_point_in_log(self, x: float, y: float) -> bool:
+        if x < 0 or x > self.diameter:
+            return False
+        elif y < 0 or y > self.diameter:
+            return False
         x_min, x_max = self.calculate_edge_positions_on_circle(y)
         y_min, y_max = self.calculate_edge_positions_on_circle(x)
 

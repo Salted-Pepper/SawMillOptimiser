@@ -1,7 +1,8 @@
 import ALNS_tools
 from logs import Log
-from shapes import Shape, ShapeType
+from shapes import ShapeType
 import ALNS
+import time
 
 import pandas as pd
 
@@ -80,6 +81,8 @@ if __name__ == '__main__':
 
     shape_types.extend(transposed_shapes)
 
+    t_0 = time.perf_counter()
     apply_ALNS(logs, shape_types)
+    t_1 = time.perf_counter()
 
-    print("Completed Optimisation Procedure!")
+    print(f"Completed Optimisation Procedure in {(t_1 - t_0) / 60: 0.2f} Minutes!")

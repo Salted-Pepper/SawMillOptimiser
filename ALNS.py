@@ -2,7 +2,6 @@ import logging
 import pandas as pd
 import random
 import datetime
-import copy
 from logs import Log
 import math
 from ALNS_methods import Method, update_method_probability
