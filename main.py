@@ -3,6 +3,7 @@ from logs import Log
 from shapes import ShapeType
 import ALNS
 import time
+import random
 
 import pandas as pd
 
@@ -35,21 +36,21 @@ if __name__ == '__main__':
 
     """
     Create Logs (to be done in UI)
+    For now random logs to ensure thorough testing of ALNS
     """
     logs.append(Log(450))
-    logs.append(Log(500))
-    logs.append(Log(350))
-    logs.append(Log(460))
-    logs.append(Log(470))
-    logs.append(Log(560))
-    logs.append(Log(580))
-    logs.append(Log(390))
-    logs.append(Log(608))
-    logs.append(Log(503))
-    logs.append(Log(487))
-    logs.append(Log(640))
-    logs.append(Log(750))
-    logs.append(Log(835))
+    logs.append(Log(550))
+    logs.append(Log(600))
+    logs.append(Log(630))
+    logs.append(Log(720))
+    logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
 
     """
     Import Shape Data

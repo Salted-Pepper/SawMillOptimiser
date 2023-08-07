@@ -113,7 +113,7 @@ class Log:
         return True
 
     def add_shape(self, shape: Shape) -> None:
-        logger.debug(f"Adding shape {shape.shape_id} to log {self.log_id}.")
+        #  logger.debug(f"Adding shape {shape.shape_id} to log {self.log_id}.")
         self.shapes.append(shape)
         self.volume_used += shape.get_volume()
         self.calculate_efficiency()
@@ -259,6 +259,7 @@ class Log:
 
     def find_distance_to_closest_shape_from_point(self, x: float, y: float, orientation: str) -> float:
         """
+        Locates closest shapes or log boundary in a certain direction
         :param x:
         :param y:
         :param orientation: left, right, up, down

@@ -60,7 +60,7 @@ class Shape:
         self.rect_kerf = None
         self.text = None
 
-        logger.debug(f"Created Shape {self.shape_id} at ({self.x}, {self.y})")
+        #  logger.debug(f"Created Shape {self.shape_id} at ({self.x}, {self.y})")
 
     def __str__(self):
         return f""
