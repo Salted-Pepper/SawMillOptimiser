@@ -63,7 +63,11 @@ class Shape:
         #  logger.debug(f"Created Shape {self.shape_id} at ({self.x}, {self.y})")
 
     def __str__(self):
-        return f""
+        if self.x is not None and self.y is not None:
+            return (f"Shape {self.shape_id} - at ({x}, {y}) in log {self.log.log_id}, "
+                    f"with w/h: {self.width}, {self.height}")
+        else:
+            return f"Shape {self.shape_id} without Log or location"
 
     def set_location(self, x=None, y=None) -> None:
         """

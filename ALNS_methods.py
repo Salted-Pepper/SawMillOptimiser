@@ -229,7 +229,6 @@ def random_point_expansion(log: Log, shape_types: list) -> tuple:
     :return:
     """
     t_0 = time.perf_counter()
-    successful = False
     found_point = False
 
     while not found_point:
@@ -343,7 +342,13 @@ def buddy_extension_repair(log: Log, shape_types: list) -> tuple:
                       [shape.x + shape.width + 2 * sk, shape.y], [shape.x + shape.width, shape.y - 2 * sk]]  # Bot Right
     rect_sizes = []
     for location in location_pairs:
-        if log.check_if_point_in_log(location[0], location[1]):
+        feasible = True
+        for shape in log.shapes:
+            if shape.check_if_point_in_shape(location[0], location[1]):
+                feasible = False
+                continue
+
+        if log.check_if_point_in_log(location[0], location[1]) and feasible:
             # TODO: (Optional) - in theory we can save computational time
             #  by not checking the side on which the "buddy" shape is on
             space_left = log.find_distance_to_closest_shape_from_point(x=location[0],
@@ -372,10 +377,12 @@ def buddy_extension_repair(log: Log, shape_types: list) -> tuple:
     space_up = largest_location_data[5]
     space_down = largest_location_data[6]
 
-    x_0 = max(0, x - space_left)
-    x_1 = min(x + space_right, log.diameter)
-    y_0 = min(0, y - space_down)
-    y_1 = max(y + space_up)
+    x_0 = x - space_left
+    x_1 = x + space_right
+    y_0 = y - space_down
+    y_1 = y + space_up
+    print(f"x_0: {x_0}, x_1: {x_1}, y_0: {y_0}, y_1: {y_1}")
+    print(f"{space_left}, {space_right}, {space_down}, {space_up}")
     corners = [log.check_if_point_in_log(x=x_0, y=y_0),
                log.check_if_point_in_log(x=x_0, y=y_1),
                log.check_if_point_in_log(x=x_1, y=y_0),
@@ -390,7 +397,7 @@ def buddy_extension_repair(log: Log, shape_types: list) -> tuple:
     successful = ALNS_tools.fit_defined_rectangle(left_most_x=x_0, right_most_x=x_1,
                                                   lowest_y=y_0, highest_y=y_1,
                                                   log=log, shape_types=shape_types)
-    logging.debug(f"BER Method Inserting Shape(s) at ({x}, {y}")
+    logging.debug(f"BER Method Inserting Shape(s) at ({x}, {y})")
     t_1 = time.perf_counter()
     return successful, t_1 - t_0
 

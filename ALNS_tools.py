@@ -234,7 +234,7 @@ def check_if_rectangle_empty(x_0: float, x_1: float, y_0: float, y_1: float, log
         for y_step in y_steps:
             # logger.debug(f"Checking ({x_step: .2f}, {y_step: .2f})")
             for shape in log.shapes:
-                if shape.check_if_point_in_shape(x_step, y_step):
+                if shape.check_if_point_in_shape(x_step, y_step) and shape not in violating_shapes:
                     violating_shapes.append(shape)
     return violating_shapes
 
@@ -482,6 +482,9 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
     :param shape_types:
     :return:
     """
+
+    logger.debug(f"Pre Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
+                 f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
     successful = False
     # Check if rectangle is empty
     violating_shapes = check_if_rectangle_empty(x_0=left_most_x, x_1=right_most_x,
@@ -490,16 +493,18 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
     # For all violating shapes we have to make a cut in the plane to ensure the rectangle is clean
     for shape in violating_shapes:
         # Check if shape still violates cut, as previous cuts could have put this shape out of violation
+        logger.debug(f"Checking {shape.shape_id} at ({shape.x},{shape.y}) with ({shape.width}, {shape.height})")
         violates = check_if_shape_in_rectangle(shape=shape, x_0=left_most_x, x_1=right_most_x,
                                                y_0=lowest_y, y_1=highest_y)
         if not violates:
+            logging.debug("No violation")
             continue
 
         # There are 4 possible cuts - find the cut that loses the least surface area
         cut_upper_off = (right_most_x - left_most_x) * ((shape.y - constants.saw_kerf) - lowest_y)
         cut_lower_off = (right_most_x - left_most_x) * (highest_y - (shape.y + shape.height + constants.saw_kerf))
         cut_left_off = (right_most_x - (shape.x + shape.width + constants.saw_kerf)) * (highest_y - lowest_y)
-        cut_right_off = ((shape.x - constants.saw_kerf) - left_most_x)
+        cut_right_off = ((shape.x - constants.saw_kerf) - left_most_x) * (highest_y - lowest_y)
         cuts = [cut_upper_off, cut_lower_off, cut_left_off, cut_right_off]
 
         # Update Values Based On Selected Optimal Cut
@@ -513,8 +518,8 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
         else:
             right_most_x = shape.x - constants.saw_kerf
 
-    # logger.debug(f"Post Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
-    #              f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
+    logger.debug(f"Post Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
+                 f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
 
     # Recheck the log boundaries
     (left_x_width, right_x_width,

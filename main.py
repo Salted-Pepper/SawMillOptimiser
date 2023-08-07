@@ -51,6 +51,7 @@ if __name__ == '__main__':
     logs.append(Log(random.randint(300, 900)))
     logs.append(Log(random.randint(300, 900)))
     logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
 
     """
     Import Shape Data

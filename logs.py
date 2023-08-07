@@ -92,6 +92,7 @@ class Log:
             z_min = r - math.sqrt(r ** 2 - (z - r) ** 2)
             z_plus = r + math.sqrt(r ** 2 - (z - r) ** 2)
         except ValueError:
+            self.show_plot()
             raise ValueError(f"Math domain error for {z}")
         return z_min, z_plus
 
@@ -260,11 +261,16 @@ class Log:
     def find_distance_to_closest_shape_from_point(self, x: float, y: float, orientation: str) -> float:
         """
         Locates closest shapes or log boundary in a certain direction
+        Returns distance to **ACTUAL SHAPE**, not the saw kerf
         :param x:
         :param y:
         :param orientation: left, right, up, down
         :return:
         """
+        for shape in self.shapes:
+            if shape.check_if_point_in_shape(x, y):
+                return 0
+
         if orientation == "left":
             # Set log boundaries for the shape
             min_space, _ = self.calculate_edge_positions_on_circle(y)
