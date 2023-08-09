@@ -31,11 +31,6 @@ def tuck(name: str, log: Log) -> tuple:
 
     successful = False
 
-    if len(log.shapes) < 1:
-        logging.debug(f"Log {log.log_id} is empty, and contains no shapes, can't apply tuck.")
-        t_1 = time.perf_counter()
-        return successful, t_1 - t_0
-
     number_of_shapes = random.randint(0, len(log.shapes))
     random_shapes = [select_random_shapes_from_log(log, count=number_of_shapes)]
 
@@ -129,10 +124,6 @@ def random_destroy(log: Log) -> tuple:
     t_0 = time.perf_counter()
     successful = False
 
-    if len(log.shapes) == 0:
-        t_1 = time.perf_counter()
-        return successful, t_1 - t_0
-
     removed_shape = select_random_shapes_from_log(log)
 
     logger.debug(f"Removed Shape at ({removed_shape.x}, {removed_shape.y}), "
@@ -148,6 +139,7 @@ def random_destroy(log: Log) -> tuple:
 def random_cluster_destroy(log: Log) -> tuple:
     t_0 = time.perf_counter()
     successful = False
+
     removed_shape = select_random_shapes_from_log(log)
 
     space_left = log.find_shapes_closest_to_shape(c_shape=removed_shape, orientation="left")
@@ -292,10 +284,6 @@ def single_extension_repair(log: Log, shape_types: list) -> tuple:
     t_0 = time.perf_counter()
     successful = False
 
-    if len(log.shapes) < 1:
-        logging.debug(f"Log {log.log_id} contains no shapes, can't apply SER")
-        t_1 = time.perf_counter()
-        return successful, t_1 - t_0
     shape = select_random_shapes_from_log(log)
 
     # Select Candidate shape ensuring the new shape is larger in at least one direction
@@ -438,23 +426,47 @@ class Method:
 
     def execute(self, log, shape_types: list) -> bool:
         attempts = 0
-        while attempts < constants.repair_max_attempts:
+        repeat = True
+        duration = 0
+        while attempts < constants.repair_max_attempts and repeat:
             if self.name.startswith("TUCK"):
-                succeeded, duration = tuck(self.name, log)
+                if len(log.shapes) > 0:
+                    succeeded, duration = tuck(self.name, log)
+                else:
+                    succeeded = False
+                    repeat = False
             elif self.name == "RANDOM":
-                succeeded, duration = random_destroy(log)
+                if len(log.shapes) > 0:
+                    succeeded, duration = random_destroy(log)
+                else:
+                    succeeded = False
+                    repeat = False
             elif self.name == "CLUSTER":
-                succeeded, duration = random_cluster_destroy(log)
-            elif self.name == "SUBSPACE":
-                succeeded, duration = subspace_destroy(log, shape_types)
+                if len(log.shapes) > 0:
+                    succeeded, duration = random_cluster_destroy(log)
+                else:
+                    succeeded = False
+                    repeat = False
             elif self.name == "INEFFICIENCY":
-                succeeded, duration = inefficiency_destroy(log, shape_types)
+                if len(log.shapes) > 0:
+                    succeeded, duration = inefficiency_destroy(log, shape_types)
+                else:
+                    succeeded = False
+                    repeat = False
             elif self.name == "RPE":
                 succeeded, duration = random_point_expansion(log, shape_types)
             elif self.name == "SER":
-                succeeded, duration = single_extension_repair(log, shape_types)
+                if len(log.shapes) > 0:
+                    succeeded, duration = single_extension_repair(log, shape_types)
+                else:
+                    succeeded = False
+                    repeat = False
             elif self.name == "BER":
-                succeeded, duration = buddy_extension_repair(log, shape_types)
+                if len(log.shapes) > 0:
+                    succeeded, duration = buddy_extension_repair(log, shape_types)
+                else:
+                    succeeded = False
+                    repeat = False
             else:
                 raise ValueError(f"ALNS Method {self.name} Not Implemented")
 
