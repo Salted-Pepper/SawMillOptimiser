@@ -36,7 +36,6 @@ def run_ALNS(logs: list, shape_types: list):
 
     destroy_methods = [Method(name="RANDOM", goal="destroy"),
                        Method(name="CLUSTER", goal="destroy"),
-                       Method(name="SUBSPACE", goal="destroy"),
                        Method(name="INEFFICIENCY", goal="destroy")]
     repair_methods = [Method(name="RPE", goal="repair"),
                       Method(name="SER", goal="repair"),
@@ -96,9 +95,9 @@ def run_ALNS(logs: list, shape_types: list):
                 tuck_method.used()
                 tuck_method.execute(log_new, shape_types)
 
-            # TODO: REMOVE FEASIBILITY CHECK AFTER EACH ITERATION - THIS IS ONLY FOR DEBUGGING AND AFFECTS PERFORMANCE
-            if not ALNS_tools.check_feasibility(logs):
-                raise ValueError(f"Placement not feasible")
+            # REMOVE FEASIBILITY CHECK AFTER EACH ITERATION - THIS IS ONLY FOR DEBUGGING AND AFFECTS PERFORMANCE
+            # if not ALNS_tools.check_feasibility(logs):
+            #     raise ValueError(f"Placement not feasible")
 
         ALNS_tools.update_log_scores([log_new])
         accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log, log_new, temperature)
@@ -106,11 +105,6 @@ def run_ALNS(logs: list, shape_types: list):
         """
         Single Iteration completed, process changes and update parameter values
         """
-        # Optional plotting to check iterations
-        # log_new.show_plot(extra_text=
-        #                   f"(Accepted Iteration {iteration})" if accept_new_solution
-        #                   else f"(Not Accepted Iteration {iteration})")
-        # log_new.save_log_plot()
         if accept_new_solution:
             logger.debug(f"New solution has been accepted with improvement {delta} \n \n")
             log.shapes = log_new.shapes
@@ -120,8 +114,11 @@ def run_ALNS(logs: list, shape_types: list):
             log.volume_used = log_new.volume_used
             log.calculate_efficiency()
             log.saw_dust = log_new.saw_dust
+            log.selection_weight = log.selection_weight * constants.log_selection_accepted
+            del log_new
         else:
             logger.debug(f"New solution has been declined, delta of {delta} \n \n")
+            log.selection_weight = log.selection_weight * constants.log_selection_declined
             pass
 
         # Push shapes to centre at end
@@ -145,6 +142,8 @@ def run_ALNS(logs: list, shape_types: list):
         # TODO: Update destroy/repair degree based on temperature
 
     ALNS_tools.report_method_stats(repair_methods + destroy_methods + tuck_methods)
+    if not ALNS_tools.check_feasibility(logs):
+        raise ValueError(f"Placement not feasible")
 
     return solution_quality_df
 

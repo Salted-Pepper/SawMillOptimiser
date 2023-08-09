@@ -60,22 +60,23 @@ def tuck(name: str, log: Log) -> tuple:
                                                        log=log)) == 0:
 
                 if space_x != 0 or space_y != 0:
-                    logger.debug(f"Moved shape {shape.shape_id} from ({shape.x},{shape.y}) "
-                                 f"to ({shape.x + space_x}, {shape.y + space_y}) using CENTRE")
+                    # logger.debug(f"Moved shape {shape.shape_id} from ({shape.x},{shape.y}) "
+                    #              f"to ({shape.x + space_x}, {shape.y + space_y}) using CENTRE")
                     shape.x += space_x
                     shape.y += space_y
                     successful = True
             elif abs(space_x) > abs(space_y):
                 successful = True
-                logger.debug(
-                    f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x + space_x}, {shape.y}) "
-                    f"- did not move y coordinates")
+                # logger.debug(
+                #     f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x + space_x}, {shape.y}) "
+                #     f"- did not move y coordinates")
                 shape.x += space_x
             else:
                 if space_x != 0 or space_y != 0:
-                    logger.debug(
-                        f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x}, {shape.y + space_y}) "
-                        f"- did not move x coordinates")
+                    # logger.debug(
+                    #     f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y})
+                    #     to ({shape.x}, {shape.y + space_y}) "
+                    #     f"- did not move x coordinates")
                     shape.y += space_y
                     successful = True
             if shape.x < 0 or shape.y < 0 or shape.x > log.diameter or shape.y > log.diameter:
@@ -87,28 +88,28 @@ def tuck(name: str, log: Log) -> tuple:
             space_left = log.find_shapes_closest_to_shape(c_shape=shape, orientation="left")
             if space_left > 0:
                 successful = True
-                logger.debug(f"Moved shape {shape.shape_id} x: {shape.x} to {shape.x - space_left} using LEFT")
+                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.x} to {shape.x - space_left} using LEFT")
                 shape.x = shape.x - space_left
     elif name.endswith("RIGHT"):
         for shape in random_shapes:
             space_right = log.find_shapes_closest_to_shape(c_shape=shape, orientation="right")
             if space_right > 0:
                 successful = True
-                logger.debug(f"Moved shape {shape.shape_id} x: {shape.x} to {shape.x + space_right} using RIGHT")
+                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.x} to {shape.x + space_right} using RIGHT")
                 shape.x = shape.x + space_right
     elif name.endswith("UP"):
         for shape in random_shapes:
             space_up = log.find_shapes_closest_to_shape(c_shape=shape, orientation="up")
             if space_up > 0:
                 successful = True
-                logger.debug(f"Moved shape {shape.shape_id} x: {shape.y} to {shape.y + space_up} using UP")
+                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.y} to {shape.y + space_up} using UP")
                 shape.y = shape.y + space_up
     elif name.endswith("DOWN"):
         for shape in random_shapes:
             space_down = log.find_shapes_closest_to_shape(c_shape=shape, orientation="down")
             if space_down > 0:
                 successful = True
-                logger.debug(f"Moved shape {shape.shape_id} x: {shape.y} to {shape.y + space_down} using DOWN")
+                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.y} to {shape.y + space_down} using DOWN")
                 shape.y = shape.y - space_down
     t_1 = time.perf_counter()
     return successful, t_1 - t_0

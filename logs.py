@@ -37,6 +37,7 @@ class Log:
         self.saw_dust = 0
         self.efficiency = 0
         self.score = -math.inf
+        self.selection_weight = 100
 
         # Plotting Variables
         self.fig = None

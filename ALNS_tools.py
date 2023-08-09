@@ -180,8 +180,8 @@ def select_log(logs: list) -> Log:
     :param logs:
     :return:
     """
-    total_efficiency = sum([1 - log.efficiency for log in logs])
-    return random.choices(logs, weights=[(1 - log.efficiency) / total_efficiency for log in logs])[0]
+    total_efficiency = sum([log.selection_weight for log in logs])
+    return random.choices(logs, weights=[log.selection_weight / total_efficiency for log in logs])[0]
 
 
 def find_orientation_from_points(centre: float, x: float, y: float) -> str:
@@ -475,7 +475,6 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
     violating_shapes = check_if_rectangle_empty(x_0=left_most_x, x_1=right_most_x,
                                                 y_0=lowest_y, y_1=highest_y, log=log)
 
-    logger.debug(f"Pre calc - y: {highest_y}, {lowest_y}, x: {right_most_x}, {left_most_x}")
     # For all violating shapes we have to make a cut in the plane to ensure the rectangle is clean
     for shape in violating_shapes:
         # Check if shape still violates cut, as previous cuts could have put this shape out of violation
@@ -503,7 +502,7 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
         else:
             right_most_x = shape.x - constants.saw_kerf
 
-    logger.debug(f"Post calc - y: {highest_y}, {lowest_y}, x: {right_most_x}, {left_most_x}")
+    # logger.debug(f"Post calc - y: {highest_y}, {lowest_y}, x: {right_most_x}, {left_most_x}")
 
     # Recheck the log boundaries
     (left_x_width, right_x_width,
