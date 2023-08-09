@@ -426,10 +426,11 @@ class Method:
         self.performance = self.performance * self.success_adjust_rate
 
     def execute(self, log, shape_types: list) -> bool:
+        self.times_called += 1
         attempts = 0
         repeat = True
         duration = 0
-        while attempts < constants.repair_max_attempts and repeat:
+        while attempts < constants.max_attempts and repeat:
             if self.name.startswith("TUCK"):
                 if len(log.shapes) > 0:
                     succeeded, duration = tuck(self.name, log)
@@ -478,6 +479,7 @@ class Method:
                 self.total_attempted += attempts
                 self.total_succeeded += 1
                 self.seconds_success += duration
+                self.set_used()
                 return succeeded
             else:
                 self.seconds_failure += duration
@@ -486,20 +488,19 @@ class Method:
         self.total_attempted += attempts
         return False
 
-    def used(self) -> None:
+    def set_used(self) -> None:
         self.method_used = True
-        self.times_called += 1
 
 
 def update_method_probability(methods: list, updated) -> None:
-
     for method in methods:
-        if updated and method.used:
-            method.performance = method.performance * constants.method_sensitivity_acceptance
-        elif method.used:
+        if updated and method.method_used:
+            method.performance = (method.performance * constants.method_sensitivity_acceptance *
+                                  math.sqrt(method.total_succeeded / method.total_attempted))
+        elif method.method_used:
             method.performance = method.performance * constants.method_sensitivity_rejection
-        method.method_used = False
 
     total_performance = sum([method.performance for method in methods])
     for method in methods:
         method.probability = method.performance / total_performance
+        method.method_used = False

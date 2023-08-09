@@ -13,7 +13,7 @@ starting_temperature = 100
 max_iterations = 400
 fill_up_iterations = 40
 
-repair_max_attempts = 20
+max_attempts = 20
 centring_attempts = 20
 
 temperature_sensitivity = 0.99

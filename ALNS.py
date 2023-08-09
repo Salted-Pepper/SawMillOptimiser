@@ -69,11 +69,9 @@ def run_ALNS(logs: list, shape_types: list):
                                                weights=[method.probability for method in repair_methods],
                                                k=1)[0]
                 logger.debug(f"Select repair method {repair_method.name} with probability {repair_method.probability}")
-                repair_method.used()
                 repair_method.execute(log_new, shape_types)
 
                 tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
-                tuck_method.used()
                 tuck_method.execute(log_new, shape_types)
         else:
             for i in range(math.floor(destroy_degree)):
@@ -81,12 +79,10 @@ def run_ALNS(logs: list, shape_types: list):
                                                 weights=[method.probability for method in destroy_methods], k=1)[0]
                 logger.debug(f"Select destroy method {destroy_method.name} "
                              f"with probability {destroy_method.probability}")
-                destroy_method.used()
                 destroy_method.execute(log_new, shape_types)
             for i in range(math.floor(repair_degree)):
                 repair_method = random.choices(repair_methods,
                                                weights=[method.probability for method in repair_methods], k=1)[0]
-                repair_method.used()
                 logger.debug(f"Select repair method {repair_method.name} with probability {repair_method.probability}")
                 method_was_successful = repair_method.execute(log_new, shape_types)
                 if method_was_successful:
@@ -94,7 +90,6 @@ def run_ALNS(logs: list, shape_types: list):
                 else:
                     logger.debug(f"Repair method {repair_method.name} was unsuccessful")
                 tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
-                tuck_method.used()
                 tuck_method.execute(log_new, shape_types)
 
             # REMOVE FEASIBILITY CHECK AFTER EACH ITERATION - THIS IS ONLY FOR DEBUGGING AND AFFECTS PERFORMANCE
