@@ -565,6 +565,7 @@ def plot_efficiency_data(logs: list, df: pd.DataFrame) -> None:
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), title="Log ID", fancybox=True)
+    fig.savefig(f"plots/efficiency_data.png")
     plt.show()
 
 
@@ -590,5 +591,8 @@ def plot_method_data(df) -> None:
     box = ax_2.get_position()
     ax_2.set_position([box.x0, box.y0, box.width * 0.8, box.height])
     ax_2.legend(loc='center left', bbox_to_anchor=(1, 0.5), title='Method', fancybox=True)
+
+    fig.savefig(f"plots/methods_probability.png")
+    fig_2.savefig(f"plots/methods_use.png")
 
     plt.show()

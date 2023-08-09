@@ -492,18 +492,14 @@ class Method:
 
 
 def update_method_probability(methods: list, updated) -> None:
-    total_performance = sum([method.performance for method in methods])
 
     for method in methods:
         if updated and method.used:
-            if method.total_attempted != 0:
-                method.performance = (method.performance * constants.method_sensitivity_acceptance *
-                                      math.sqrt(method.method_used / method.total_attempted))
-            else:
-                method.performance = method.performance * constants.method_sensitivity_acceptance
-            method.method_used = False
+            method.performance = method.performance * constants.method_sensitivity_acceptance
         elif method.used:
             method.performance = method.performance * constants.method_sensitivity_rejection
+        method.method_used = False
 
+    total_performance = sum([method.performance for method in methods])
     for method in methods:
         method.probability = method.performance / total_performance

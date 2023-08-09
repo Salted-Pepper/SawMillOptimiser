@@ -134,7 +134,7 @@ def run_ALNS(logs: list, shape_types: list):
         update_method_probability(repair_methods, accept_new_solution)
         update_method_probability(destroy_methods, accept_new_solution)
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
-        method_df = ALNS_tools.save_method_data(tuck_methods + repair_methods + destroy_methods, method_df, iteration)
+        method_df = ALNS_tools.save_method_data(repair_methods + destroy_methods, method_df, iteration)
         iteration += 1
 
         if iteration % 10 == 0:
