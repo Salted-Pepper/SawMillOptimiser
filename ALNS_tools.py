@@ -141,6 +141,17 @@ def save_iteration_data(logs: list, df: pd.DataFrame, iteration: int) -> pd.Data
     return df
 
 
+def save_method_data(methods: list, df: pd.DataFrame, iteration: int) -> pd.DataFrame:
+    for method in methods:
+        df.loc[len(df)] = {'iteration': iteration,
+                           'method': method.name,
+                           'probability': method.probability,
+                           'times_called': method.times_called,
+                           'times_tried': method.total_attempted,
+                           'times_success': method.total_succeeded}
+    return df
+
+
 def calculate_smallest_shape_types(shape_types: list) -> None:
     """
     Calculates shapes with minimum properties to check if there exists any shape that fits in a certain height/width
@@ -414,6 +425,7 @@ def check_if_shape_in_rectangle(shape: Shape, x_0, x_1, y_0, y_1) -> bool:
     else:
         return False
 
+
 def check_if_logs_feasible(list_of_logs) -> bool:
     for log in list_of_logs:
         if not log.check_if_feasible():
@@ -481,7 +493,7 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
         violates = check_if_shape_in_rectangle(shape=shape, x_0=left_most_x, x_1=right_most_x,
                                                y_0=lowest_y, y_1=highest_y)
         if not violates:
-            logging.debug("No violation")
+            # logging.debug("No violation")
             continue
 
         # There are 4 possible cuts - find the cut that loses the least surface area
@@ -542,7 +554,7 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
     return successful
 
 
-def plot_iteration_data(logs: list, df: pd.DataFrame):
+def plot_efficiency_data(logs: list, df: pd.DataFrame) -> None:
     fig, ax = plt.subplots()
     for log in range(len(logs)):
         df_log = df[df["log"] == log]
@@ -553,4 +565,30 @@ def plot_iteration_data(logs: list, df: pd.DataFrame):
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), title="Log ID", fancybox=True)
+    plt.show()
+
+
+def plot_method_data(df) -> None:
+    methods = df['method'].unique()
+
+    fig, ax = plt.subplots()
+    fig_2, ax_2 = plt.subplots()
+    for method in methods:
+        df_method = df[df["method"] == method]
+        ax.plot(df_method["iteration"], df_method["probability"], label=f"{method}")
+        ax_2.plot(df_method['iteration'], df_method['times_called'], label=f"{method}")
+    ax.set_title("Method Probability Over Iterations")
+    ax.set_xlabel("Iteration")
+    ax.set_ylabel("Efficiency")
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), title="Method", fancybox=True)
+
+    ax_2.set_title("Method Attempts")
+    ax_2.set_xlabel("Iteration")
+    ax_2.set_ylabel("Cumulative Use")
+    box = ax_2.get_position()
+    ax_2.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    ax_2.legend(loc='center left', bbox_to_anchor=(1, 0.5), title='Method', fancybox=True)
+
     plt.show()

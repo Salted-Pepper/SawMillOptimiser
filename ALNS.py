@@ -23,6 +23,8 @@ logger.setLevel(logging.DEBUG)
 
 def run_ALNS(logs: list, shape_types: list):
     solution_quality_df = pd.DataFrame(columns=["iteration", "log", "score", "saw_dust", "volume_used", "efficiency"])
+    method_df = pd.DataFrame(columns=["iteration", "method", "probability",
+                                      "times_called", "times_tried", "times_success"])
     iteration = 1
     temperature = constants.starting_temperature
     destroy_degree = 4
@@ -126,12 +128,13 @@ def run_ALNS(logs: list, shape_types: list):
             for _ in range(constants.centring_attempts):
                 tuck_methods[0].execute(log, shape_types)
 
-        solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
         temperature = ALNS_tools.update_temperature(temperature, accept_new_solution, delta, score)
         logger.debug(f"New temperature is {temperature: .3f}, new solution accepted: {accept_new_solution},"
                      f"delta: {delta: .2f}, score:{score: .2f}")
         update_method_probability(repair_methods, accept_new_solution)
         update_method_probability(destroy_methods, accept_new_solution)
+        solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
+        method_df = ALNS_tools.save_method_data(tuck_methods + repair_methods + destroy_methods, method_df, iteration)
         iteration += 1
 
         if iteration % 10 == 0:
@@ -142,10 +145,8 @@ def run_ALNS(logs: list, shape_types: list):
         # TODO: Update destroy/repair degree based on temperature
 
     ALNS_tools.report_method_stats(repair_methods + destroy_methods + tuck_methods)
-    if not ALNS_tools.check_feasibility(logs):
-        raise ValueError(f"Placement not feasible")
 
-    return solution_quality_df
+    return solution_quality_df, method_df
 
 
 def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:

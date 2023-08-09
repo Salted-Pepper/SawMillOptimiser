@@ -18,7 +18,7 @@ def apply_ALNS(list_of_logs: list, list_of_shape_types: list):
                       logs=list_of_logs,
                       shape_types=list_of_shape_types)
 
-    solution_quality_df = ALNS.run_ALNS(logs=list_of_logs, shape_types=list_of_shape_types)
+    solution_quality_df, method_df = ALNS.run_ALNS(logs=list_of_logs, shape_types=list_of_shape_types)
 
     for log in list_of_logs:
         log.show_plot()
@@ -26,7 +26,8 @@ def apply_ALNS(list_of_logs: list, list_of_shape_types: list):
 
     ALNS_tools.check_feasibility(list_of_logs=list_of_logs)
 
-    ALNS_tools.plot_iteration_data(logs=list_of_logs, df=solution_quality_df)
+    ALNS_tools.plot_efficiency_data(logs=list_of_logs, df=solution_quality_df)
+    ALNS_tools.plot_method_data(method_df)
 
 
 if __name__ == '__main__':
