@@ -38,11 +38,11 @@ if __name__ == '__main__':
     Create Logs (to be done in UI)
     For now random logs to ensure thorough testing of ALNS
     """
-    logs.append(Log(450))
-    logs.append(Log(550))
-    logs.append(Log(600))
-    logs.append(Log(630))
-    logs.append(Log(720))
+    # logs.append(Log(450))
+    # logs.append(Log(550))
+    # logs.append(Log(600))
+    # logs.append(Log(630))
+    # logs.append(Log(720))
     logs.append(Log(random.randint(300, 900)))
     logs.append(Log(random.randint(300, 900)))
     logs.append(Log(random.randint(300, 900)))

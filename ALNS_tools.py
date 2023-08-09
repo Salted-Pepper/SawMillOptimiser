@@ -414,21 +414,6 @@ def check_if_shape_in_rectangle(shape: Shape, x_0, x_1, y_0, y_1) -> bool:
     else:
         return False
 
-
-def plot_iteration_data(logs: list, df: pd.DataFrame):
-    fig, ax = plt.subplots()
-    for log in range(len(logs)):
-        df_log = df[df["log"] == log]
-        ax.plot(df_log["iteration"], df_log["efficiency"], label=f"{log}")
-        ax.set_title("Efficiency Per Log")
-        ax.set_xlabel("Iteration")
-        ax.set_ylabel("Efficiency")
-        box = ax.get_position()
-        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), title="Log ID", fancybox=True)
-    plt.show()
-
-
 def check_if_logs_feasible(list_of_logs) -> bool:
     for log in list_of_logs:
         if not log.check_if_feasible():
@@ -483,17 +468,17 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
     :return:
     """
 
-    logger.debug(f"Pre Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
-                 f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
+    # logger.debug(f"Pre Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
+    #              f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
     successful = False
     # Check if rectangle is empty
     violating_shapes = check_if_rectangle_empty(x_0=left_most_x, x_1=right_most_x,
                                                 y_0=lowest_y, y_1=highest_y, log=log)
 
+    logger.debug(f"Pre calc - y: {highest_y}, {lowest_y}, x: {right_most_x}, {left_most_x}")
     # For all violating shapes we have to make a cut in the plane to ensure the rectangle is clean
     for shape in violating_shapes:
         # Check if shape still violates cut, as previous cuts could have put this shape out of violation
-        logger.debug(f"Checking {shape.shape_id} at ({shape.x},{shape.y}) with ({shape.width}, {shape.height})")
         violates = check_if_shape_in_rectangle(shape=shape, x_0=left_most_x, x_1=right_most_x,
                                                y_0=lowest_y, y_1=highest_y)
         if not violates:
@@ -518,8 +503,7 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
         else:
             right_most_x = shape.x - constants.saw_kerf
 
-    logger.debug(f"Post Calculations: x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
-                 f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
+    logger.debug(f"Post calc - y: {highest_y}, {lowest_y}, x: {right_most_x}, {left_most_x}")
 
     # Recheck the log boundaries
     (left_x_width, right_x_width,
@@ -557,3 +541,17 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
             shape.assign_to_log(log)
         successful = True
     return successful
+
+
+def plot_iteration_data(logs: list, df: pd.DataFrame):
+    fig, ax = plt.subplots()
+    for log in range(len(logs)):
+        df_log = df[df["log"] == log]
+        ax.plot(df_log["iteration"], df_log["efficiency"], label=f"{log}")
+    ax.set_title("Efficiency Per Log")
+    ax.set_xlabel("Iteration")
+    ax.set_ylabel("Efficiency")
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), title="Log ID", fancybox=True)
+    plt.show()

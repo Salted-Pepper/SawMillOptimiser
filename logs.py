@@ -93,7 +93,7 @@ class Log:
             z_plus = r + math.sqrt(r ** 2 - (z - r) ** 2)
         except ValueError:
             self.show_plot()
-            raise ValueError(f"Math domain error for {z}")
+            raise ValueError(f"Math domain error for {z} in log {self.log_id}")
         return z_min, z_plus
 
     def check_if_feasible(self) -> bool:

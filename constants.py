@@ -25,7 +25,7 @@ smallest_total_shapes = []
 
 error_margin = 0.0001
 
-centring_attempts = 10
+centring_attempts = 20
 
 # Score parameters
 usage_multiplier = 1

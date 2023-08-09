@@ -64,7 +64,7 @@ class Shape:
 
     def __str__(self):
         if self.x is not None and self.y is not None:
-            return (f"Shape {self.shape_id} - at ({x}, {y}) in log {self.log.log_id}, "
+            return (f"Shape {self.shape_id} - at ({self.x}, {self.y}) in log {self.log.log_id}, "
                     f"with w/h: {self.width}, {self.height}")
         else:
             return f"Shape {self.shape_id} without Log or location"
@@ -129,10 +129,16 @@ class Shape:
         self.log.ax.add_patch(self.rect_kerf)
         self.log.ax.add_patch(self.rect)
 
-        self.text = self.log.ax.text(self.x + constants.rect_text_margin * self.width,
-                                     self.y + constants.rect_text_margin * self.height,
-                                     r"$\bf{{{i}}}$".format(i=self.shape_id) + f":\n{self.width}x{self.height}",
-                                     color="white")
+        if self.width > self.height:
+            self.text = self.log.ax.text(self.x + constants.rect_text_margin * self.width,
+                                         self.y + constants.rect_text_margin * self.height,
+                                         r"$\bf{{{i}}}$".format(i=self.shape_id) + f":{self.width}x{self.height}",
+                                         color="white", fontsize="small")
+        else:
+            self.text = self.log.ax.text(self.x + constants.rect_text_margin * self.width,
+                                         self.y + constants.rect_text_margin * self.height,
+                                         r"$\bf{{{i}}}$".format(i=self.shape_id) + f":\n{self.width}x \n {self.height}",
+                                         color="white", fontsize="small")
         return [self.rect, self.rect_kerf, self.text]
 
     def get_volume(self) -> float:

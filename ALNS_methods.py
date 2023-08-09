@@ -31,6 +31,11 @@ def tuck(name: str, log: Log) -> tuple:
 
     successful = False
 
+    if len(log.shapes) < 1:
+        logging.debug(f"Log {log.log_id} is empty, and contains no shapes, can't apply tuck.")
+        t_1 = time.perf_counter()
+        return successful, t_1 - t_0
+
     number_of_shapes = random.randint(0, len(log.shapes))
     random_shapes = [select_random_shapes_from_log(log, count=number_of_shapes)]
 
@@ -287,7 +292,12 @@ def single_extension_repair(log: Log, shape_types: list) -> tuple:
     t_0 = time.perf_counter()
     successful = False
 
+    if len(log.shapes) < 1:
+        logging.debug(f"Log {log.log_id} contains no shapes, can't apply SER")
+        t_1 = time.perf_counter()
+        return successful, t_1 - t_0
     shape = select_random_shapes_from_log(log)
+
     # Select Candidate shape ensuring the new shape is larger in at least one direction
     candidate_shapes = [s for s in shape_types if (s.height > shape.height and s.width >= shape.width) or
                         (s.height >= shape.height and s.width > shape.width)]
@@ -377,12 +387,14 @@ def buddy_extension_repair(log: Log, shape_types: list) -> tuple:
     space_up = largest_location_data[5]
     space_down = largest_location_data[6]
 
+    if max(space_up, space_down) == 0 or max(space_left, space_right) == 0:
+        t_1 = time.perf_counter()
+        return False, t_1 - t_0
+
     x_0 = x - space_left
     x_1 = x + space_right
     y_0 = y - space_down
     y_1 = y + space_up
-    print(f"x_0: {x_0}, x_1: {x_1}, y_0: {y_0}, y_1: {y_1}")
-    print(f"{space_left}, {space_right}, {space_down}, {space_up}")
     corners = [log.check_if_point_in_log(x=x_0, y=y_0),
                log.check_if_point_in_log(x=x_0, y=y_1),
                log.check_if_point_in_log(x=x_1, y=y_0),
