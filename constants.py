@@ -13,7 +13,10 @@ starting_temperature = 100
 max_iterations = 100
 fill_up_iterations = 5
 
-max_attempts = 20
+min_destroy_degree = 1
+min_repair_degree = 4
+
+max_attempts = 25
 centring_attempts = 10
 
 tuck_success_multiplier = 1.1
@@ -27,7 +30,7 @@ min_height_shape_type = None
 smallest_total_shapes = []
 
 # Selection Parameters
-log_selection_accepted = 0.98
+log_selection_accepted = 0.99
 log_selection_rejected = 0.9
 
 method_sensitivity_acceptance = 0.99

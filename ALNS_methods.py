@@ -311,7 +311,7 @@ def random_point_expansion(log: Log, shape_types: list, **kwargs) -> tuple:
 
         attempts += 1
         if attempts > constants.max_iterations:
-            logging.debug(f"RPE destroy failed to find a suitable point")
+            logging.debug(f"RPE repair failed to find a suitable point")
             t_1 = time.perf_counter()
             return False, t_1 - t_0
 

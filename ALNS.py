@@ -30,7 +30,7 @@ def run_ALNS(logs: list, shape_types: list):
                                       "times_called", "times_tried", "times_success"])
     iteration = 1
     temperature = constants.starting_temperature
-    destroy_degree = 3
+    destroy_degree = 1
     repair_degree = 12
     tuck_degree = 10
 
@@ -124,7 +124,6 @@ def run_ALNS(logs: list, shape_types: list):
         ALNS_tools.update_log_scores([log_new])
         accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log, log_new, temperature)
 
-
         """
         Single Iteration completed, process changes and update parameter values
         """
@@ -170,6 +169,8 @@ def run_ALNS(logs: list, shape_types: list):
             for method in repair_methods + destroy_methods + tuck_methods:
                 logging.debug(f"Method {method.name} has probability {method.probability} "
                               f"and performance {method.performance}")
+            for log in logs:
+                logging.debug(f"Log {log.log_id} has weight {log.selection_weight}")
 
     # Push shapes to centre at end
     for log in logs:

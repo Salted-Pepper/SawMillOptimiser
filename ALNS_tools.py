@@ -130,8 +130,8 @@ def update_temperature(temperature: float, updated: bool, delta: float, score: f
 def update_degrees(temperature, accepted_solution, destroy_degree, repair_degree) -> tuple:
     if not accepted_solution:
         destroy_degree = destroy_degree * math.sqrt(temperature/constants.starting_temperature)
-        repair_degree = repair_degree * math.sqrt(temperature/constants.starting_temperature)
-    return max(destroy_degree, 1), max(repair_degree, 2)
+        repair_degree = repair_degree * (temperature/constants.starting_temperature)**(1/100)
+    return max(destroy_degree, constants.min_destroy_degree), max(repair_degree, constants.min_repair_degree)
 
 
 def save_iteration_data(logs: list, df: pd.DataFrame, iteration: int) -> pd.DataFrame:
@@ -199,8 +199,8 @@ def select_log(logs: list) -> Log:
     :param logs:
     :return:
     """
-    total_efficiency = sum([log.selection_weight for log in logs])
-    return random.choices(logs, weights=[log.selection_weight / total_efficiency for log in logs])[0]
+    total_weight = sum([log.selection_weight for log in logs])
+    return random.choices(logs, weights=[log.selection_weight / total_weight for log in logs])[0]
 
 
 def find_orientation_from_points(centre: float, x: float, y: float) -> str:
