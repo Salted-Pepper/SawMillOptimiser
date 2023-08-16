@@ -35,6 +35,7 @@ def update_log_scores(logs: list) -> None:
 
 def calculate_log_score(log: Log):
     # TODO: In scoring add method for "efficient" space usage - maybe check central square usage (Find empty spaces)
+    #  Maybe a gradient grid weighing central points heavier?
     log.score = log.volume_used * constants.usage_multiplier \
                 + log.saw_dust * constants.saw_dust_multiplier \
                 + (log.volume - log.volume_used) * constants.unused_multiplier

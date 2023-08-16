@@ -13,6 +13,9 @@ default measurement: millimeters
 default dimensionality: width x height
 """
 
+# TODO: UI For input/output
+# TODO: Double check sawdust calculations
+
 
 def apply_ALNS(list_of_logs: list, list_of_shape_types: list) -> tuple:
     ALNS.greedy_place(all_shapes=shapes,
@@ -49,7 +52,7 @@ if __name__ == '__main__':
     # logs.append(Log(720))
     # logs.append(Log(random.randint(300, 900)))
     # logs.append(Log(random.randint(300, 900)))
-    logs.append(Log(random.randint(300, 900)))
+    # logs.append(Log(random.randint(300, 900)))
     logs.append(Log(random.randint(300, 900)))
     logs.append(Log(random.randint(300, 900)))
     logs.append(Log(random.randint(300, 900)))
