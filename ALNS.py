@@ -102,13 +102,17 @@ def run_ALNS(logs: list, shape_types: list):
                     tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
                     tuck_method.execute(log_new, shape_types)
 
-            for i in range(math.floor(repair_degree)):
+            repairs = 0
+            repair_iterations = 0
+            while repairs <= math.floor(repair_degree) and repair_iterations <= constants.max_iterations:
+                repair_iterations += 1
                 repair_method = random.choices(repair_methods,
                                                weights=[method.probability for method in repair_methods], k=1)[0]
                 logger.debug(f"Select repair method {repair_method.name} with probability {repair_method.probability}")
                 method_was_successful = repair_method.execute(log_new, shape_types)
                 if method_was_successful:
                     logger.debug(f"Repair method {repair_method.name} was successful")
+                    repairs += 1
                 else:
                     logger.debug(f"Repair method {repair_method.name} was unsuccessful")
 

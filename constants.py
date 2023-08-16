@@ -14,9 +14,9 @@ max_iterations = 100
 fill_up_iterations = 5
 
 min_destroy_degree = 1
-min_repair_degree = 4
+min_repair_degree = 5
 
-max_attempts = 25
+max_attempts = 15
 centring_attempts = 10
 
 tuck_success_multiplier = 1.1

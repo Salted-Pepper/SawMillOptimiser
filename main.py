@@ -8,9 +8,6 @@ import random
 import pandas as pd
 
 
-# TODO: Fix edge issue
-# TODO: Use tucker between destroy and repair (sometimes?)
-
 """
 default measurement: millimeters
 default dimensionality: width x height
@@ -52,10 +49,10 @@ if __name__ == '__main__':
     # logs.append(Log(720))
     # logs.append(Log(random.randint(300, 900)))
     # logs.append(Log(random.randint(300, 900)))
-    # logs.append(Log(random.randint(300, 900)))
-    # logs.append(Log(random.randint(300, 900)))
-    # logs.append(Log(random.randint(300, 900)))
-    # logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
+    logs.append(Log(random.randint(300, 900)))
     logs.append(Log(random.randint(300, 900)))
     logs.append(Log(random.randint(300, 900)))
     logs.append(Log(random.randint(300, 900)))
