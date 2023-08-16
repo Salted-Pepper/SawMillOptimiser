@@ -27,7 +27,7 @@ def run_ALNS(logs: list, shape_types: list):
                                       "times_called", "times_tried", "times_success"])
     iteration = 1
     temperature = constants.starting_temperature
-    destroy_degree = 4
+    destroy_degree = 5
     repair_degree = 12
     tuck_degree = 10
 
@@ -85,11 +85,7 @@ def run_ALNS(logs: list, shape_types: list):
             if tuck_timing == "start":
                 for _ in range(math.floor(tuck_degree)):
                     tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
-                    tuck_succeed = tuck_method.execute(log_new, shape_types)
-                    if tuck_succeed:
-                        tuck_start_prob = tuck_start_prob * constants.tuck_success_multiplier
-                    else:
-                        tuck_start_prob = tuck_start_prob * constants.tuck_failure_multiplier
+                    tuck_method.execute(log_new, shape_types)
 
             for i in range(math.floor(destroy_degree)):
                 destroy_method = random.choices(destroy_methods,
@@ -101,11 +97,7 @@ def run_ALNS(logs: list, shape_types: list):
             if tuck_timing == "inbetween":
                 for _ in range(math.floor(tuck_degree)):
                     tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
-                    tuck_succeed = tuck_method.execute(log_new, shape_types)
-                    if tuck_succeed:
-                        tuck_between_prob = tuck_between_prob * constants.tuck_success_multiplier
-                    else:
-                        tuck_between_prob = tuck_between_prob * constants.tuck_failure_multiplier
+                    tuck_method.execute(log_new, shape_types)
 
             for i in range(math.floor(repair_degree)):
                 repair_method = random.choices(repair_methods,
@@ -122,11 +114,7 @@ def run_ALNS(logs: list, shape_types: list):
             if tuck_timing == "end":
                 for _ in range(math.floor(tuck_degree)):
                     tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
-                    tuck_succeed = tuck_method.execute(log_new, shape_types)
-                    if tuck_succeed:
-                        tuck_end_prob = tuck_end_prob * constants.tuck_success_multiplier
-                    else:
-                        tuck_end_prob = tuck_end_prob * constants.tuck_failure_multiplier
+                    tuck_method.execute(log_new, shape_types)
 
             # FEASIBILITY CHECK AFTER EACH ITERATION - THIS IS ONLY FOR DEBUGGING AND AFFECTS PERFORMANCE
             # if not ALNS_tools.check_feasibility(logs):
@@ -150,11 +138,13 @@ def run_ALNS(logs: list, shape_types: list):
             log.selection_weight = log.selection_weight * constants.log_selection_accepted
             del log_new
         else:
-            logger.debug(f"New solution has been declined, delta of {delta} \n \n")
-            log.selection_weight = log.selection_weight * constants.log_selection_declined
+            logger.debug(f"New solution has been rejected, delta of {delta} \n \n")
+            log.selection_weight = log.selection_weight * constants.log_selection_rejected
 
         temperature = ALNS_tools.update_temperature(temperature, accept_new_solution, delta, score)
-        logger.debug(f"New temperature is {temperature: .3f}, new solution accepted: {accept_new_solution},"
+        destroy_degree, repair_degree = ALNS_tools.update_degrees(temperature, accept_new_solution,
+                                                                  destroy_degree, repair_degree)
+        logger.debug(f"New temperature is {temperature: .3f}, new solution accepted: {accept_new_solution}, "
                      f"delta: {delta: .2f}, score:{score: .2f}")
         update_method_probability(repair_methods, accept_new_solution)
         update_method_probability(destroy_methods, accept_new_solution)
@@ -162,12 +152,11 @@ def run_ALNS(logs: list, shape_types: list):
         method_df = ALNS_tools.save_method_data(repair_methods + destroy_methods, method_df, iteration)
         iteration += 1
 
+        # Log method data every 10 iterations
         if iteration % 10 == 0:
             for method in repair_methods + destroy_methods + tuck_methods:
                 logging.debug(f"Method {method.name} has probability {method.probability} "
                               f"and performance {method.performance}")
-
-        # TODO: Update destroy/repair degree based on temperature
 
     # Push shapes to centre at end
     for log in logs:

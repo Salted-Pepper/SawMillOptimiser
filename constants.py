@@ -10,7 +10,7 @@ error_margin = 0.0001
 ALNS Parameters
 """
 starting_temperature = 100
-max_iterations = 500
+max_iterations = 400
 fill_up_iterations = 40
 
 max_attempts = 10
@@ -28,7 +28,7 @@ smallest_total_shapes = []
 
 # Selection Parameters
 log_selection_accepted = 0.98
-log_selection_declined = 0.9
+log_selection_rejected = 0.9
 
 method_sensitivity_acceptance = 0.99
 method_sensitivity_rejection = 0.95

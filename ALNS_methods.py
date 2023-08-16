@@ -219,13 +219,21 @@ def subspace_destroy(log: Log, **kwargs) -> tuple:
 
     for _ in range(5):
         found_point = False
+        attempts = 0
         while not found_point:
             min_value = max(constants.min_height_shape_type.height, constants.min_width_shape_type.width)
             max_value = log.diameter - min_value
-            # Select a point that can fit at least a shape to prevent wasting time on small subrectangles
+            # Select a point that can fit at least a shape to prevent wasting time on small sub-rectangles
             p_x, p_y = np.random.uniform(low=min_value, high=max_value, size=2)
             if log.check_if_point_in_log(p_x, p_y):
                 found_point = True
+
+            attempts += 1
+            if attempts > constants.max_iterations:
+                logging.debug(f"Subspace destroy failed to find a suitable point")
+                t_1 = time.perf_counter()
+                return successful, t_1 - t_0
+
         x_min, x_max = log.calculate_edge_positions_on_circle(p_y)
         y_min, y_max = log.calculate_edge_positions_on_circle(p_x)
 
@@ -282,6 +290,7 @@ def random_point_expansion(log: Log, shape_types: list, **kwargs) -> tuple:
     t_0 = time.perf_counter()
 
     found_point = False
+    attempts = 0
     while not found_point:
         p_x, p_y = np.random.uniform(low=0, high=log.diameter, size=2)
 
@@ -293,6 +302,12 @@ def random_point_expansion(log: Log, shape_types: list, **kwargs) -> tuple:
 
             if not point_in_shape:
                 found_point = True
+
+        attempts += 1
+        if attempts > constants.max_iterations:
+            logging.debug(f"RPE destroy failed to find a suitable point")
+            t_1 = time.perf_counter()
+            return False, t_1 - t_0
 
     #  logger.debug(f"Selected point in Log {log.log_id} at ({p_x: .2f}, {p_y: .2f})")
     """
@@ -432,7 +447,7 @@ def buddy_extension_repair(log: Log, shape_types: list, **kwargs) -> tuple:
 
     if max(space_up, space_down) == 0 or max(space_left, space_right) == 0:
         t_1 = time.perf_counter()
-        return False, t_1 - t_0
+        return successful, t_1 - t_0
 
     x_0 = x - space_left
     x_1 = x + space_right
@@ -464,7 +479,7 @@ class Method:
     def __init__(self, name: str, goal: str):
         self.name = name
         self.performance = 100
-        self.probability = 1
+        self.probability = 1/3
         self.method_used = False
         self.times_called = 0
         self.total_attempted = 0
@@ -528,9 +543,9 @@ class Method:
         self.method_used = True
 
 
-def update_method_probability(methods: list, updated) -> None:
+def update_method_probability(methods: list, accepted_solution) -> None:
     for method in methods:
-        if updated and method.method_used:
+        if accepted_solution and method.method_used:
             method.performance = (method.performance * constants.method_sensitivity_acceptance *
                                   max(0.1, math.sqrt(method.total_succeeded / method.total_attempted)))
         elif method.method_used:
