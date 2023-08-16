@@ -10,11 +10,11 @@ error_margin = 0.0001
 ALNS Parameters
 """
 starting_temperature = 100
-max_iterations = 400
-fill_up_iterations = 40
+max_iterations = 100
+fill_up_iterations = 5
 
-max_attempts = 10
-centring_attempts = 20
+max_attempts = 20
+centring_attempts = 10
 
 tuck_success_multiplier = 1.1
 tuck_failure_multiplier = 0.91

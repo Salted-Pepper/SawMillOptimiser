@@ -2,6 +2,9 @@ import logging
 import pandas as pd
 import random
 import datetime
+
+from matplotlib import pyplot as plt
+
 from logs import Log
 import math
 from ALNS_methods import Method, update_method_probability
@@ -27,7 +30,7 @@ def run_ALNS(logs: list, shape_types: list):
                                       "times_called", "times_tried", "times_success"])
     iteration = 1
     temperature = constants.starting_temperature
-    destroy_degree = 5
+    destroy_degree = 3
     repair_degree = 12
     tuck_degree = 10
 
@@ -57,10 +60,10 @@ def run_ALNS(logs: list, shape_types: list):
     """
     Start ALNS Sequence, select random methods to repair and destroy based on assigned probabilities
     """
-    while temperature > 1 and iteration <= constants.max_iterations:
+    while temperature > 1 and iteration <= constants.max_iterations * len(logs):
 
         log = ALNS_tools.select_log(logs)
-        logger.debug(f"Going into iteration {iteration} with temperature {temperature}... "
+        logger.debug(f"\n\nGoing into iteration {iteration} with temperature {temperature}... "
                      f"Selected {log.log_id} with diameter {log.diameter}")
         # Invoke copy here to ensure changes do not apply unless new solution is accepted
         log_new = Log(log.diameter, copy_id=log.log_id)
@@ -68,7 +71,7 @@ def run_ALNS(logs: list, shape_types: list):
             Shape(shape_type=shape.type, x=shape.x, y=shape.y, copy_id=shape.shape_id).assign_to_log(log_new)
 
         # Only run repair methods for the first couple of iterations to fill up empty space in initial solution
-        if iteration < constants.fill_up_iterations:
+        if iteration < constants.fill_up_iterations * len(logs):
             for i in range(math.floor(repair_degree)):
                 repair_method = random.choices(repair_methods,
                                                weights=[method.probability for method in repair_methods],
@@ -76,8 +79,8 @@ def run_ALNS(logs: list, shape_types: list):
                 logger.debug(f"Select repair method {repair_method.name} with probability {repair_method.probability}")
                 repair_method.execute(log_new, shape_types)
 
-                tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
-                tuck_method.execute(log_new, shape_types)
+            tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
+            tuck_method.execute(log_new, shape_types)
         else:
             tuck_timing = random.choices(["start", "inbetween", "end"],
                                          weights=[tuck_start_prob, tuck_between_prob, tuck_end_prob], k=1)[0]
@@ -108,8 +111,6 @@ def run_ALNS(logs: list, shape_types: list):
                     logger.debug(f"Repair method {repair_method.name} was successful")
                 else:
                     logger.debug(f"Repair method {repair_method.name} was unsuccessful")
-                tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
-                tuck_method.execute(log_new, shape_types)
 
             if tuck_timing == "end":
                 for _ in range(math.floor(tuck_degree)):
@@ -123,11 +124,17 @@ def run_ALNS(logs: list, shape_types: list):
         ALNS_tools.update_log_scores([log_new])
         accept_new_solution, delta, score = ALNS_tools.check_if_new_solution_better(log, log_new, temperature)
 
+
         """
         Single Iteration completed, process changes and update parameter values
         """
         if accept_new_solution:
-            logger.debug(f"New solution has been accepted with improvement {delta} \n \n")
+            # Save plot for each iteration (VERY MEMORY INTENSIVE, ONLY FOR CHECKS)
+            log_new.show_plot()
+            log_new.fig.savefig(f"plots/log_{log.log_id}_iteration_{iteration}_accepted.png")
+            plt.close(log_new.fig)
+
+            logger.debug(f"New solution has been accepted with improvement {delta}")
             log.shapes = log_new.shapes
             for shape in log.shapes:
                 shape.log = log
@@ -138,14 +145,20 @@ def run_ALNS(logs: list, shape_types: list):
             log.selection_weight = log.selection_weight * constants.log_selection_accepted
             del log_new
         else:
-            logger.debug(f"New solution has been rejected, delta of {delta} \n \n")
+            # Save plot for each iteration (VERY MEMORY INTENSIVE, ONLY FOR CHECKS)
+            log_new.show_plot()
+            log_new.fig.savefig(f"plots/log_{log.log_id}_iteration_{iteration}_rejected.png")
+            plt.close(log_new.fig)
+
+            logger.debug(f"New solution has been rejected, delta of {delta}")
             log.selection_weight = log.selection_weight * constants.log_selection_rejected
 
         temperature = ALNS_tools.update_temperature(temperature, accept_new_solution, delta, score)
         destroy_degree, repair_degree = ALNS_tools.update_degrees(temperature, accept_new_solution,
                                                                   destroy_degree, repair_degree)
         logger.debug(f"New temperature is {temperature: .3f}, new solution accepted: {accept_new_solution}, "
-                     f"delta: {delta: .2f}, score:{score: .2f}")
+                     f"delta: {delta: .2f}, score:{score: .2f} - "
+                     f"destroy degree - {destroy_degree: .2f}, repair degree - {repair_degree: .2f}")
         update_method_probability(repair_methods, accept_new_solution)
         update_method_probability(destroy_methods, accept_new_solution)
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
@@ -359,6 +372,7 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                 log.add_shape(shape)
 
         all_shapes.extend(shapes)
+        logger.debug("Completed Initial Solution \n \n")
 
 
 def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, h_n: float,

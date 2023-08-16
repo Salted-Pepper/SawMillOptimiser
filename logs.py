@@ -90,7 +90,7 @@ class Log:
             shape_volume_in_rect += ((min(x_1, shape.x + shape.width) - max(x_0, shape.x)) *
                                      (min(y_1, shape.y + shape.height) - max(y_0, shape.y)))
         rel_usage = shape_volume_in_rect / volume_rect, intersecting_shapes
-        logging.debug(f"Efficiency of sub-rectangle (({x_0}, {y_0}), ({x_1},{y_1})) is {rel_usage}")
+        # logging.debug(f"Efficiency of sub-rectangle (({x_0}, {y_0}), ({x_1},{y_1})) is {rel_usage}")
         return rel_usage
 
     def return_plot(self) -> tuple:
@@ -112,8 +112,9 @@ class Log:
         try:
             z_min = r - math.sqrt(r ** 2 - (z - r) ** 2)
             z_plus = r + math.sqrt(r ** 2 - (z - r) ** 2)
-        except ValueError:
+        except ValueError as e:
             self.show_plot()
+            logger.critical(f"Math domain error for {z} in log {self.log_id}: {e}")
             raise ValueError(f"Math domain error for {z} in log {self.log_id}")
         return z_min, z_plus
 
@@ -403,16 +404,16 @@ def calculate_sawdust_shared_between_shapes(shape_a, shape_b, saw_kerf=None) -> 
         sk = saw_kerf
 
     # Check if shapes are within saw kerf reach of each other
-    if shape_a.x - sk <= shape_b + shape_b.width + sk \
+    if shape_a.x - sk <= shape_b.x + shape_b.width + sk \
             and shape_a.x + shape_a.width + sk >= shape_b.x - sk \
             and shape_a.y - sk <= shape_b.y + shape_b.height + sk \
             and shape_a.y + shape_a.height + sk >= shape_b.y - sk:
-        if shape_a.x - (shape_b + shape_b.width) < 2*sk:
+        if shape_a.x - (shape_b.x + shape_b.width) < 2*sk:
             # Shape b is to left of shape a
             y_min = max(shape_a.y - sk, shape_b.y - sk)
             y_max = min(shape_a.y + shape_a.height + sk, shape_b.y + shape_b.height + sk)
             # The shared sawdust is the overlap in sawkerf, times the length of the overlap
-            return (2*sk - (shape_a.x - (shape_b + shape_b.width))) * (y_max - y_min)
+            return (2*sk - (shape_a.x - (shape_b.x + shape_b.width))) * (y_max - y_min)
         elif shape_b.x - (shape_a.x + shape_a.width) < 2*sk:
             # Shape b is right of shape a
             y_min = max(shape_a.y - sk, shape_b.y - sk)

@@ -112,7 +112,7 @@ def check_if_new_solution_better(log_old: Log, log_new: Log, temperature: float)
     log_old_score = calculate_log_score(log_old)
     log_score = calculate_log_score(log_new)
     # TODO: (Optional) Probability based acceptance using temperature
-    if log_old_score > log_score:
+    if log_old_score + constants.error_margin > log_score:
         return False, 0, log_old_score
     else:
         return True, log_score - log_old_score, log_score
@@ -131,7 +131,7 @@ def update_degrees(temperature, accepted_solution, destroy_degree, repair_degree
     if not accepted_solution:
         destroy_degree = destroy_degree * math.sqrt(temperature/constants.starting_temperature)
         repair_degree = repair_degree * math.sqrt(temperature/constants.starting_temperature)
-    return destroy_degree, repair_degree
+    return max(destroy_degree, 1), max(repair_degree, 2)
 
 
 def save_iteration_data(logs: list, df: pd.DataFrame, iteration: int) -> pd.DataFrame:

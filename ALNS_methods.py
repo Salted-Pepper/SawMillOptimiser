@@ -252,16 +252,21 @@ def subspace_destroy(log: Log, **kwargs) -> tuple:
 
     min_efficiency = math.inf
 
+    min_rect = []
     for rectangle in rectangles:
         x_0, x_1, y_0, y_1 = rectangle
         efficiency, intersecting_shapes = log.calculate_efficiency_sub_rectangle(x_0, x_1, y_0, y_1)
-        if efficiency < min_efficiency:
+        if efficiency < min_efficiency and len(intersecting_shapes) != 0:
             min_rect = [x_0, x_1, y_0, y_1, intersecting_shapes]
             min_efficiency = efficiency
 
     if min_efficiency > 0.98:
         t_1 = time.perf_counter()
         return successful, t_1 - t_0
+
+    if len(min_rect) == 0:
+        t_1 = time.perf_counter()
+        return False, t_1 - t_0
 
     x_0 = min_rect[0]
     x_1 = min_rect[1]
@@ -275,6 +280,7 @@ def subspace_destroy(log: Log, **kwargs) -> tuple:
         shape.remove_from_log()
 
     t_1 = time.perf_counter()
+    successful = True
     return successful, t_1 - t_0
 
 
