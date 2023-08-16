@@ -66,8 +66,8 @@ class Log:
         self.ax.add_patch(circle)
         self.ax.set_title(f"id: {self.log_id}, "
                           r"$d_i$:" + f"{self.diameter}, "
-                          r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
-                          r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}" + extra_text)
+                                      r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
+                                                     r"$\alpha_i$:" + f"{self.calculate_sawdust_created():.2f}" + extra_text)
         self.patches.append(circle)
 
     def calculate_efficiency(self) -> float:
@@ -141,8 +141,19 @@ class Log:
         self.calculate_efficiency()
 
     def calculate_sawdust_created(self) -> float:
-        # TODO: Create function to calculate sawdust (circumference - shared circumference)
-        return -1 / self.volume
+        # First calculate total sawdust
+        saw_dust_m_2 = 0
+        for shape in self.shapes:
+            saw_dust = (2 * shape.width * constants.saw_kerf
+                        + 2 * shape.height * constants.saw_kerf
+                        + 4 * (constants.saw_kerf ** 2))
+            saw_dust_m_2 += saw_dust
+
+        # Calculate the shared sawdust - we consider each combination of shape once, hence we only slice forward
+        for index, shape_1 in enumerate(self.shapes):
+            for shape_2 in self.shapes[index:]:
+                saw_dust_m_2 -= calculate_sawdust_shared_between_shapes(shape_1, shape_2)
+        return saw_dust_m_2
 
     def remove_shape(self, shape: Shape) -> None:
         try:
@@ -383,6 +394,45 @@ def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
         return True
     else:
         return False
+
+
+def calculate_sawdust_shared_between_shapes(shape_a, shape_b, saw_kerf=None) -> float:
+    if saw_kerf is None:
+        sk = constants.saw_kerf
+    else:
+        sk = saw_kerf
+
+    # Check if shapes are within saw kerf reach of each other
+    if shape_a.x - sk <= shape_b + shape_b.width + sk \
+            and shape_a.x + shape_a.width + sk >= shape_b.x - sk \
+            and shape_a.y - sk <= shape_b.y + shape_b.height + sk \
+            and shape_a.y + shape_a.height + sk >= shape_b.y - sk:
+        if shape_a.x - (shape_b + shape_b.width) < 2*sk:
+            # Shape b is to left of shape a
+            y_min = max(shape_a.y - sk, shape_b.y - sk)
+            y_max = min(shape_a.y + shape_a.height + sk, shape_b.y + shape_b.height + sk)
+            # The shared sawdust is the overlap in sawkerf, times the length of the overlap
+            return (2*sk - (shape_a.x - (shape_b + shape_b.width))) * (y_max - y_min)
+        elif shape_b.x - (shape_a.x + shape_a.width) < 2*sk:
+            # Shape b is right of shape a
+            y_min = max(shape_a.y - sk, shape_b.y - sk)
+            y_max = min(shape_a.y + shape_a.height + sk, shape_b.y + shape_b.height + sk)
+            # The shared sawdust is the overlap in sawkerf, times the length of the overlap
+            return (2*sk - (shape_b.x - (shape_a.x + shape_a.width))) * (y_max - y_min)
+        elif shape_a.y - (shape_b.y + shape_b.height) < 2*sk:
+            # Shape b is below shape a
+            x_min = max(shape_a.x - sk, shape_b.x - sk)
+            x_max = min(shape_a.x + shape_a.width + sk, shape_b.x + shape_b.width + sk)
+            # The shared sawdust is the overlap in sawkerf, times the length of the overlap
+            return (2*sk - (shape_a.y - (shape_b.y + shape_b.height))) * (x_max - x_min)
+        elif shape_a.y + shape_a.height - shape_b.y < 2*sk:
+            # Shape b is above shape a
+            x_min = max(shape_a.x - sk, shape_b.x - sk)
+            x_max = min(shape_a.x + shape_a.width + sk, shape_b.x + shape_b.width + sk)
+            # The shared sawdust is the overlap in sawkerf, times the length of the overlap
+            return (2*sk - (shape_a.y + shape_a.height - shape_b.y)) * (x_max - x_min)
+    else:
+        return 0
 
 
 def select_random_shapes_from_log(log: Log, count: int = 1) -> Shape or list:

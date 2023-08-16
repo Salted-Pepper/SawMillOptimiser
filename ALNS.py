@@ -92,7 +92,6 @@ def run_ALNS(logs: list, shape_types: list):
                         tuck_start_prob = tuck_start_prob * constants.tuck_failure_multiplier
 
             for i in range(math.floor(destroy_degree)):
-
                 destroy_method = random.choices(destroy_methods,
                                                 weights=[method.probability for method in destroy_methods], k=1)[0]
                 logger.debug(f"Select destroy method {destroy_method.name} "
@@ -153,12 +152,6 @@ def run_ALNS(logs: list, shape_types: list):
         else:
             logger.debug(f"New solution has been declined, delta of {delta} \n \n")
             log.selection_weight = log.selection_weight * constants.log_selection_declined
-            pass
-
-        # Push shapes to centre at end
-        for log in logs:
-            for _ in range(constants.centring_attempts):
-                tuck_methods[0].execute(log, shape_types)
 
         temperature = ALNS_tools.update_temperature(temperature, accept_new_solution, delta, score)
         logger.debug(f"New temperature is {temperature: .3f}, new solution accepted: {accept_new_solution},"
@@ -176,6 +169,10 @@ def run_ALNS(logs: list, shape_types: list):
 
         # TODO: Update destroy/repair degree based on temperature
 
+    # Push shapes to centre at end
+    for log in logs:
+        for _ in range(constants.centring_attempts):
+            tuck_methods[0].execute(log, shape_types)
     ALNS_tools.report_method_stats(repair_methods + destroy_methods + tuck_methods)
 
     return solution_quality_df, method_df
