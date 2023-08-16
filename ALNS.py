@@ -28,7 +28,12 @@ def run_ALNS(logs: list, shape_types: list):
     iteration = 1
     temperature = constants.starting_temperature
     destroy_degree = 4
-    repair_degree = 15
+    repair_degree = 12
+    tuck_degree = 10
+
+    tuck_start_prob = 1 / 3
+    tuck_between_prob = 1 / 3
+    tuck_end_prob = 1 / 3
 
     """
     Initialize methods and create pre-emptive calculations for parameters that will be re-used
@@ -38,7 +43,7 @@ def run_ALNS(logs: list, shape_types: list):
 
     destroy_methods = [Method(name="RANDOM", goal="destroy"),
                        Method(name="CLUSTER", goal="destroy"),
-                       Method(name="INEFFICIENCY", goal="destroy")]
+                       Method(name="SUBSPACE", goal="destroy")]
     repair_methods = [Method(name="RPE", goal="repair"),
                       Method(name="SER", goal="repair"),
                       Method(name="BER", goal="repair")]
@@ -52,7 +57,7 @@ def run_ALNS(logs: list, shape_types: list):
     """
     Start ALNS Sequence, select random methods to repair and destroy based on assigned probabilities
     """
-    while temperature > 0 and iteration <= constants.max_iterations:
+    while temperature > 1 and iteration <= constants.max_iterations:
 
         log = ALNS_tools.select_log(logs)
         logger.debug(f"Going into iteration {iteration} with temperature {temperature}... "
@@ -74,12 +79,28 @@ def run_ALNS(logs: list, shape_types: list):
                 tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
                 tuck_method.execute(log_new, shape_types)
         else:
+            tuck_timing = random.choices(["start", "inbetween", "end"],
+                                         weights=[tuck_start_prob, tuck_between_prob, tuck_end_prob], k=1)[0]
+
+            if tuck_timing == "start":
+                for _ in range(math.floor(tuck_degree)):
+                    tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
+                    tuck_method.execute(log_new, shape_types)
+
             for i in range(math.floor(destroy_degree)):
+
                 destroy_method = random.choices(destroy_methods,
                                                 weights=[method.probability for method in destroy_methods], k=1)[0]
                 logger.debug(f"Select destroy method {destroy_method.name} "
                              f"with probability {destroy_method.probability}")
                 destroy_method.execute(log_new, shape_types)
+
+            if tuck_timing == "inbetween":
+                for _ in range(math.floor(tuck_degree)):
+                    tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
+                    tuck_success = tuck_method.execute(log_new, shape_types)
+                    # TODO: Update probability on success/fail for all tucktimings
+
             for i in range(math.floor(repair_degree)):
                 repair_method = random.choices(repair_methods,
                                                weights=[method.probability for method in repair_methods], k=1)[0]
@@ -92,7 +113,13 @@ def run_ALNS(logs: list, shape_types: list):
                 tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
                 tuck_method.execute(log_new, shape_types)
 
-            # REMOVE FEASIBILITY CHECK AFTER EACH ITERATION - THIS IS ONLY FOR DEBUGGING AND AFFECTS PERFORMANCE
+            if tuck_timing == "end":
+                for _ in range(math.floor(tuck_degree)):
+                    tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
+                    tuck_method.execute(log_new, shape_types)
+
+            #
+            # FEASIBILITY CHECK AFTER EACH ITERATION - THIS IS ONLY FOR DEBUGGING AND AFFECTS PERFORMANCE
             # if not ALNS_tools.check_feasibility(logs):
             #     raise ValueError(f"Placement not feasible")
 
@@ -205,14 +232,14 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
             ---OPTIMISING NORTHERN/SOUTHERN RECTANGLE---
             STAGE 2 OPTIMISATION
             """
-            height_a = (log.diameter - (shape.height + 2*constants.saw_kerf)) / 2
+            height_a = (log.diameter - (shape.height + 2 * constants.saw_kerf)) / 2
             stage_2_solutions = []
             shorter_a_shapes = [shape_2 for shape_2 in shape_types if shape_2.height <= height_a]
 
             for short_shape in shorter_a_shapes:
                 h_n = short_shape.height
                 r = log.diameter / 2
-                inner_value = r ** 2 - ((log.diameter + (shape.height + 2*constants.saw_kerf)) / 2 + h_n - r) ** 2
+                inner_value = r ** 2 - ((log.diameter + (shape.height + 2 * constants.saw_kerf)) / 2 + h_n - r) ** 2
 
                 x_left_north = r - math.sqrt(inner_value)
                 x_right_north = r + math.sqrt(inner_value)

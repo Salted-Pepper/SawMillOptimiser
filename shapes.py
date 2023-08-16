@@ -137,7 +137,7 @@ class Shape:
         else:
             self.text = self.log.ax.text(self.x + constants.rect_text_margin * self.width,
                                          self.y + constants.rect_text_margin * self.height,
-                                         r"$\bf{{{i}}}$".format(i=self.shape_id) + f":\n{self.width}x \n {self.height}",
+                                         r"$\bf{{{i}}}$".format(i=self.shape_id) + f":\n{self.width}x\n{self.height}",
                                          color="white", fontsize="small")
         return [self.rect, self.rect_kerf, self.text]
 

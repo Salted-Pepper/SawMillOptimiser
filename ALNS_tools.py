@@ -120,7 +120,8 @@ def check_if_new_solution_better(log_old: Log, log_new: Log, temperature: float)
 
 def update_temperature(temperature: float, updated: bool, delta: float, score: float) -> float:
     if updated and delta != 0:
-        temperature = temperature * (delta / score) ** (1 / 10)
+        logger.debug(f"Multiplying temperature by {(1 + (delta / score) ** 2)}")
+        temperature = temperature * (1 + (delta / score) ** 2)
     else:
         temperature = temperature * constants.temperature_sensitivity
     return temperature
@@ -380,7 +381,14 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
     return shapes, rel_usage
 
 
-def fit_points_in_boundaries(left_x, right_x, low_y, high_y, priority: str, log: Log):
+def fit_points_in_boundaries(left_x, right_x, low_y, high_y, log: Log, priority: str = None):
+
+    if priority is None:
+        if right_x - left_x > high_y - low_y:
+            priority = "height"
+        else:
+            priority = "width"
+
     if priority == "height":
         x_left_boundary_low, x_right_boundary_low = log.calculate_edge_positions_on_circle(low_y)
         x_left_boundary_high, x_right_boundary_high = log.calculate_edge_positions_on_circle(high_y)
@@ -580,7 +588,7 @@ def plot_method_data(df) -> None:
         ax_2.plot(df_method['iteration'], df_method['times_called'], label=f"{method}")
     ax.set_title("Method Probability Over Iterations")
     ax.set_xlabel("Iteration")
-    ax.set_ylabel("Efficiency")
+    ax.set_ylabel("Probability")
     box = ax.get_position()
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), title="Method", fancybox=True)

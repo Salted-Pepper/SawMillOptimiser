@@ -18,7 +18,7 @@ logger = logging.getLogger("ALNS_Methods")
 logger.setLevel(logging.DEBUG)
 
 
-def tuck(name: str, log: Log) -> tuple:
+def tuck(name: str, log: Log, **kwargs) -> tuple:
     """
     Selects a random number of shapes in the log.
     Tries to move all shapes as much as possible in a certain direction.
@@ -115,7 +115,7 @@ def tuck(name: str, log: Log) -> tuple:
     return successful, t_1 - t_0
 
 
-def random_destroy(log: Log) -> tuple:
+def random_destroy(log: Log, **kwargs) -> tuple:
     """
     Randomly removes a shape from the log. Selects a shape based on distance to the centre.
     The further the centre of a shape is from the centre of the log, the higher the likelihood of it being picked.
@@ -137,7 +137,7 @@ def random_destroy(log: Log) -> tuple:
     return successful, t_1 - t_0
 
 
-def random_cluster_destroy(log: Log) -> tuple:
+def random_cluster_destroy(log: Log, **kwargs) -> tuple:
     t_0 = time.perf_counter()
     successful = False
 
@@ -201,23 +201,75 @@ def random_cluster_destroy(log: Log) -> tuple:
     return successful, t_1 - t_0
 
 
-def subspace_destroy(log: Log, shape_types: list) -> tuple:
+def subspace_destroy(log: Log, **kwargs) -> tuple:
+    """
+    Create a random set of rectangles. Calculate the efficiency in the rectangles. Remove shapes involved in the
+    lowest efficiency rectangle
+    :param log:
+    :return:
+    """
     successful = False
     t_0 = time.perf_counter()
+
+    rectangles = []
+
+    for _ in range(5):
+        found_point = False
+        while not found_point:
+            p_x, p_y = np.random.uniform(low=0, high=log.diameter, size=2)
+            if log.check_if_point_in_log(p_x, p_y):
+                found_point = True
+        print(f"p_x {p_x}, p_y {p_y}")
+        x_min, x_max = log.calculate_edge_positions_on_circle(p_y)
+        y_min, y_max = log.calculate_edge_positions_on_circle(p_x)
+
+        max_width = x_max - p_x
+        max_height = y_max - p_y
+
+        if not (max_width > constants.min_width_shape_type.width
+                and max_height > constants.min_height_shape_type.height):
+            t_1 = time.perf_counter()
+            return successful, t_1 - t_0
+
+        width = np.random.uniform(low=constants.min_width_shape_type.width, high=max_width)
+        height = np.random.uniform(low=constants.min_height_shape_type.height, high=max_height)
+        # Place the rectangle in a way such that it fits within the boundaries
+        x_0, x_1, y_0, y_1 = ALNS_tools.fit_points_in_boundaries(left_x=p_x,
+                                                                 right_x=p_x + width,
+                                                                 low_y=p_y,
+                                                                 high_y=p_y + height,
+                                                                 log=log)
+        rectangles.append([x_0, x_1, y_0, y_1].copy())
+
+    min_efficiency = math.inf
+
+    for rectangle in rectangles:
+        x_0, x_1, y_0, y_1 = rectangle
+        efficiency, intersecting_shapes = log.calculate_efficiency_sub_rectangle(x_0, x_1, y_0, y_1)
+        if efficiency < min_efficiency:
+            min_rect = [x_0, x_1, y_0, y_1, intersecting_shapes]
+            min_efficiency = efficiency
+
+    if min_efficiency == 1:
+        t_1 = time.perf_counter()
+        return successful, t_1 - t_0
+
+    x_0 = min_rect[0]
+    x_1 = min_rect[1]
+    y_0 = min_rect[2]
+    y_1 = min_rect[3]
+    int_shapes = min_rect[4]
+
+    logger.debug(f"Removing rectangle (x: {x_0:.2f}, {x_1:.2f}, y: {y_0:.2f}, {y_1:.2f}) "
+                 f"containing {len(int_shapes)} shapes ")
+    for shape in int_shapes:
+        shape.remove_from_log()
 
     t_1 = time.perf_counter()
     return successful, t_1 - t_0
 
 
-def inefficiency_destroy(log: Log, shape_types: list) -> tuple:
-    successful = False
-    t_0 = time.perf_counter()
-
-    t_1 = time.perf_counter()
-    return successful, t_1 - t_0
-
-
-def random_point_expansion(log: Log, shape_types: list) -> tuple:
+def random_point_expansion(log: Log, shape_types: list, **kwargs) -> tuple:
     """
     RPE selects a random point in the log, it then calculates the maximum rectangle it can create until there
     is a collision in every direction. It then checks if this area is empty of shapes. If so, it applies an LP to
@@ -227,8 +279,8 @@ def random_point_expansion(log: Log, shape_types: list) -> tuple:
     :return:
     """
     t_0 = time.perf_counter()
-    found_point = False
 
+    found_point = False
     while not found_point:
         p_x, p_y = np.random.uniform(low=0, high=log.diameter, size=2)
 
@@ -281,7 +333,7 @@ def random_point_expansion(log: Log, shape_types: list) -> tuple:
     return successful, t_1 - t_0
 
 
-def single_extension_repair(log: Log, shape_types: list) -> tuple:
+def single_extension_repair(log: Log, shape_types: list, **kwargs) -> tuple:
     t_0 = time.perf_counter()
     successful = False
 
@@ -327,7 +379,7 @@ def single_extension_repair(log: Log, shape_types: list) -> tuple:
     return successful, t_1 - t_0
 
 
-def buddy_extension_repair(log: Log, shape_types: list) -> tuple:
+def buddy_extension_repair(log: Log, shape_types: list, **kwargs) -> tuple:
     t_0 = time.perf_counter()
     successful = False
 
@@ -419,6 +471,23 @@ class Method:
         self.seconds_success = 0
         self.seconds_failure = 0
 
+        if name.startswith("TUCK"):
+            self.method_function = tuck
+        elif name == "RANDOM":
+            self.method_function = random_destroy
+        elif name == "CLUSTER":
+            self.method_function = random_cluster_destroy
+        elif name == "SUBSPACE":
+            self.method_function = subspace_destroy
+        elif name == "RPE":
+            self.method_function = random_point_expansion
+        elif name == "SER":
+            self.method_function = single_extension_repair
+        elif name == "BER":
+            self.method_function = buddy_extension_repair
+        else:
+            raise ValueError(f"Method {self.name} not defined")
+
     def method_failed(self) -> None:
         self.performance = self.performance * self.failure_adjust_rate
 
@@ -431,55 +500,20 @@ class Method:
         repeat = True
         duration = 0
         while attempts < constants.max_attempts and repeat:
-            if self.name.startswith("TUCK"):
-                if len(log.shapes) > 0:
-                    succeeded, duration = tuck(self.name, log)
-                else:
-                    succeeded = False
-                    repeat = False
-            elif self.name == "RANDOM":
-                if len(log.shapes) > 0:
-                    succeeded, duration = random_destroy(log)
-                else:
-                    succeeded = False
-                    repeat = False
-            elif self.name == "CLUSTER":
-                if len(log.shapes) > 0:
-                    succeeded, duration = random_cluster_destroy(log)
-                else:
-                    succeeded = False
-                    repeat = False
-            elif self.name == "INEFFICIENCY":
-                if len(log.shapes) > 0:
-                    succeeded, duration = inefficiency_destroy(log, shape_types)
-                else:
-                    succeeded = False
-                    repeat = False
-            elif self.name == "RPE":
-                succeeded, duration = random_point_expansion(log, shape_types)
-            elif self.name == "SER":
-                if len(log.shapes) > 0:
-                    succeeded, duration = single_extension_repair(log, shape_types)
-                else:
-                    succeeded = False
-                    repeat = False
-            elif self.name == "BER":
-                if len(log.shapes) > 0:
-                    succeeded, duration = buddy_extension_repair(log, shape_types)
-                else:
-                    succeeded = False
-                    repeat = False
+            if len(log.shapes) > 0:
+                succeeded, duration = self.method_function(name=self.name, log=log, shape_types=shape_types)
             else:
-                raise ValueError(f"ALNS Method {self.name} Not Implemented")
+                succeeded = False
+                repeat = False
 
             attempts += 1
+            self.set_used()
 
             if succeeded:
                 logger.debug(f"Method {self.name} succeeded in {attempts} attempts.")
                 self.total_attempted += attempts
                 self.total_succeeded += 1
                 self.seconds_success += duration
-                self.set_used()
                 return succeeded
             else:
                 self.seconds_failure += duration
@@ -496,7 +530,7 @@ def update_method_probability(methods: list, updated) -> None:
     for method in methods:
         if updated and method.method_used:
             method.performance = (method.performance * constants.method_sensitivity_acceptance *
-                                  math.sqrt(method.total_succeeded / method.total_attempted))
+                                  max(0.1, math.sqrt(method.total_succeeded / method.total_attempted)))
         elif method.method_used:
             method.performance = method.performance * constants.method_sensitivity_rejection
 

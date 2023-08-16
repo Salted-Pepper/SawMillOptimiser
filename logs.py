@@ -1,5 +1,6 @@
 import logging
 
+import ALNS_tools
 import constants
 from shapes import Shape
 
@@ -72,6 +73,25 @@ class Log:
     def calculate_efficiency(self) -> float:
         self.efficiency = self.volume_used / self.volume
         return self.efficiency
+
+    def calculate_efficiency_sub_rectangle(self, x_0, x_1, y_0, y_1) -> tuple:
+        intersecting_shapes = []
+        for shape in self.shapes:
+            if ALNS_tools.check_if_shape_in_rectangle(shape, x_0, x_1, y_0, y_1):
+                intersecting_shapes.append(shape)
+
+        if len(intersecting_shapes) == 0:
+            return 0, intersecting_shapes
+
+        volume_rect = (x_1 - x_0) * (y_1 - y_0)
+        shape_volume_in_rect = 0
+        for shape in intersecting_shapes:
+            # calculate shape volume in rect
+            shape_volume_in_rect += ((min(x_1, shape.x + shape.width) - max(x_0, shape.x)) *
+                                     (min(y_1, shape.y + shape.height) - max(y_0, shape.y)))
+        rel_usage = shape_volume_in_rect / volume_rect, intersecting_shapes
+        logging.debug(f"Efficiency of sub-rectangle (({x_0}, {y_0}), ({x_1},{y_1})) is {rel_usage}")
+        return rel_usage
 
     def return_plot(self) -> tuple:
         return self.fig, self.ax

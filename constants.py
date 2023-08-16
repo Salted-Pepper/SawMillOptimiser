@@ -10,13 +10,14 @@ error_margin = 0.0001
 ALNS Parameters
 """
 starting_temperature = 100
-max_iterations = 400
+max_iterations = 500
 fill_up_iterations = 40
 
-max_attempts = 20
+max_attempts = 10
 centring_attempts = 20
 
-temperature_sensitivity = 0.99
+# This takes the temperature down to failing level in approx ~230 failed attempts
+temperature_sensitivity = 0.98
 
 min_width_shape_type = None
 min_height_shape_type = None
