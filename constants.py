@@ -16,6 +16,9 @@ fill_up_iterations = 40
 max_attempts = 10
 centring_attempts = 20
 
+tuck_success_multiplier = 1.1
+tuck_failure_multiplier = 0.91
+
 # This takes the temperature down to failing level in approx ~230 failed attempts
 temperature_sensitivity = 0.98
 

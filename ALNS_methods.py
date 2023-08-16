@@ -60,22 +60,23 @@ def tuck(name: str, log: Log, **kwargs) -> tuple:
                                                        log=log)) == 0:
 
                 if space_x != 0 or space_y != 0:
-                    # logger.debug(f"Moved shape {shape.shape_id} from ({shape.x},{shape.y}) "
-                    #              f"to ({shape.x + space_x}, {shape.y + space_y}) using CENTRE")
+                    # logger.debug(f"Moved shape {shape.shape_id} from ({shape.x:.2f},{shape.y:.2f}) "
+                    #              f"to ({shape.x + space_x:.2f}, {shape.y + space_y:.2f}) using CENTRE")
                     shape.x += space_x
                     shape.y += space_y
                     successful = True
             elif abs(space_x) > abs(space_y):
                 successful = True
                 # logger.debug(
-                #     f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y}) to ({shape.x + space_x}, {shape.y}) "
+                #     f"Moved shape {shape.shape_id} from ({shape.x:.2f}, {shape.y:.2f})
+                #     to ({shape.x + space_x:.2f}, {shape.y:.2f}) "
                 #     f"- did not move y coordinates")
                 shape.x += space_x
             else:
                 if space_x != 0 or space_y != 0:
                     # logger.debug(
-                    #     f"Moved shape {shape.shape_id} from ({shape.x}, {shape.y})
-                    #     to ({shape.x}, {shape.y + space_y}) "
+                    #     f"Moved shape {shape.shape_id} from ({shape.x:.2f}, {shape.y:.2f})
+                    #     to ({shape.x:.2f}, {shape.y + space_y:.2f}) "
                     #     f"- did not move x coordinates")
                     shape.y += space_y
                     successful = True
@@ -88,28 +89,31 @@ def tuck(name: str, log: Log, **kwargs) -> tuple:
             space_left = log.find_shapes_closest_to_shape(c_shape=shape, orientation="left")
             if space_left > 0:
                 successful = True
-                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.x} to {shape.x - space_left} using LEFT")
+                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.x:.2f}
+                # to {shape.x - space_left:.2f} using LEFT")
                 shape.x = shape.x - space_left
     elif name.endswith("RIGHT"):
         for shape in random_shapes:
             space_right = log.find_shapes_closest_to_shape(c_shape=shape, orientation="right")
             if space_right > 0:
                 successful = True
-                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.x} to {shape.x + space_right} using RIGHT")
+                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.x:.2f}
+                # to {shape.x + space_right:.2f} using RIGHT")
                 shape.x = shape.x + space_right
     elif name.endswith("UP"):
         for shape in random_shapes:
             space_up = log.find_shapes_closest_to_shape(c_shape=shape, orientation="up")
             if space_up > 0:
                 successful = True
-                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.y} to {shape.y + space_up} using UP")
+                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.y:.2f} to {shape.y + space_up:.2f} using UP")
                 shape.y = shape.y + space_up
     elif name.endswith("DOWN"):
         for shape in random_shapes:
             space_down = log.find_shapes_closest_to_shape(c_shape=shape, orientation="down")
             if space_down > 0:
                 successful = True
-                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.y} to {shape.y + space_down} using DOWN")
+                # logger.debug(f"Moved shape {shape.shape_id} x: {shape.y:.2f}
+                # to {shape.y + space_down:.2f} using DOWN")
                 shape.y = shape.y - space_down
     t_1 = time.perf_counter()
     return successful, t_1 - t_0
@@ -203,8 +207,8 @@ def random_cluster_destroy(log: Log, **kwargs) -> tuple:
 
 def subspace_destroy(log: Log, **kwargs) -> tuple:
     """
-    Create a random set of rectangles. Calculate the efficiency in the rectangles. Remove shapes involved in the
-    lowest efficiency rectangle
+    Create a random set of rectangles. Calculate the efficiency in the rectangles. Remove shapes overlapping
+    with the lowest efficiency rectangle.
     :param log:
     :return:
     """
@@ -216,20 +220,17 @@ def subspace_destroy(log: Log, **kwargs) -> tuple:
     for _ in range(5):
         found_point = False
         while not found_point:
-            p_x, p_y = np.random.uniform(low=0, high=log.diameter, size=2)
+            min_value = max(constants.min_height_shape_type.height, constants.min_width_shape_type.width)
+            max_value = log.diameter - min_value
+            # Select a point that can fit at least a shape to prevent wasting time on small subrectangles
+            p_x, p_y = np.random.uniform(low=min_value, high=max_value, size=2)
             if log.check_if_point_in_log(p_x, p_y):
                 found_point = True
-        print(f"p_x {p_x}, p_y {p_y}")
         x_min, x_max = log.calculate_edge_positions_on_circle(p_y)
         y_min, y_max = log.calculate_edge_positions_on_circle(p_x)
 
         max_width = x_max - p_x
         max_height = y_max - p_y
-
-        if not (max_width > constants.min_width_shape_type.width
-                and max_height > constants.min_height_shape_type.height):
-            t_1 = time.perf_counter()
-            return successful, t_1 - t_0
 
         width = np.random.uniform(low=constants.min_width_shape_type.width, high=max_width)
         height = np.random.uniform(low=constants.min_height_shape_type.height, high=max_height)
@@ -250,7 +251,7 @@ def subspace_destroy(log: Log, **kwargs) -> tuple:
             min_rect = [x_0, x_1, y_0, y_1, intersecting_shapes]
             min_efficiency = efficiency
 
-    if min_efficiency == 1:
+    if min_efficiency > 0.98:
         t_1 = time.perf_counter()
         return successful, t_1 - t_0
 
@@ -370,8 +371,9 @@ def single_extension_repair(log: Log, shape_types: list, **kwargs) -> tuple:
     else:
         replacement_piece = Shape(shape_type=shape_type, x=shape.x - space_left, y=shape.y)
     replacement_piece.assign_to_log(log)
-    logger.debug(f"SER Replaced {shape.shape_id}: ({shape.x},{shape.y}) - ({shape.width}, {shape.height}) with "
-                 f"({shape.x - space_left}, {shape.y - space_down}) - ({shape_type.width}, {shape_type.height}) "
+    logger.debug(f"SER Replaced {shape.shape_id}: ({shape.x:.2f},{shape.y:.2f}) - ({shape.width}, {shape.height}) with "
+                 f"({shape.x - space_left:.2f}, {shape.y - space_down:.2f}) "
+                 f"- ({shape_type.width}, {shape_type.height}) "
                  f"in log {log.log_id}")
     shape.remove_from_log()
     successful = True

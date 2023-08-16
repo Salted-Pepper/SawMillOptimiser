@@ -85,7 +85,11 @@ def run_ALNS(logs: list, shape_types: list):
             if tuck_timing == "start":
                 for _ in range(math.floor(tuck_degree)):
                     tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
-                    tuck_method.execute(log_new, shape_types)
+                    tuck_succeed = tuck_method.execute(log_new, shape_types)
+                    if tuck_succeed:
+                        tuck_start_prob = tuck_start_prob * constants.tuck_success_multiplier
+                    else:
+                        tuck_start_prob = tuck_start_prob * constants.tuck_failure_multiplier
 
             for i in range(math.floor(destroy_degree)):
 
@@ -98,8 +102,11 @@ def run_ALNS(logs: list, shape_types: list):
             if tuck_timing == "inbetween":
                 for _ in range(math.floor(tuck_degree)):
                     tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
-                    tuck_success = tuck_method.execute(log_new, shape_types)
-                    # TODO: Update probability on success/fail for all tucktimings
+                    tuck_succeed = tuck_method.execute(log_new, shape_types)
+                    if tuck_succeed:
+                        tuck_between_prob = tuck_between_prob * constants.tuck_success_multiplier
+                    else:
+                        tuck_between_prob = tuck_between_prob * constants.tuck_failure_multiplier
 
             for i in range(math.floor(repair_degree)):
                 repair_method = random.choices(repair_methods,
@@ -116,9 +123,12 @@ def run_ALNS(logs: list, shape_types: list):
             if tuck_timing == "end":
                 for _ in range(math.floor(tuck_degree)):
                     tuck_method = random.choices(tuck_methods, weights=tuck_probabilities, k=1)[0]
-                    tuck_method.execute(log_new, shape_types)
+                    tuck_succeed = tuck_method.execute(log_new, shape_types)
+                    if tuck_succeed:
+                        tuck_end_prob = tuck_end_prob * constants.tuck_success_multiplier
+                    else:
+                        tuck_end_prob = tuck_end_prob * constants.tuck_failure_multiplier
 
-            #
             # FEASIBILITY CHECK AFTER EACH ITERATION - THIS IS ONLY FOR DEBUGGING AND AFFECTS PERFORMANCE
             # if not ALNS_tools.check_feasibility(logs):
             #     raise ValueError(f"Placement not feasible")
