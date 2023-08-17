@@ -149,7 +149,6 @@ class Log:
                         + 2 * shape.height * constants.saw_kerf
                         + 4 * (constants.saw_kerf ** 2))
             saw_dust_m_2 += saw_dust
-        print(f"Saw dust is {saw_dust_m_2}")
         # Calculate the shared sawdust - we consider each combination of shape once, hence we only slice forward
         for index, shape_1 in enumerate(self.shapes):
             for shape_2 in self.shapes[index+1:]:

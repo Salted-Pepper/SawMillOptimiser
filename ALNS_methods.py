@@ -493,6 +493,7 @@ class Method:
         self.goal = goal
         self.seconds_success = 0
         self.seconds_failure = 0
+        self.iteration_succeed = 0
 
         if name.startswith("TUCK"):
             self.method_function = tuck
@@ -516,12 +517,16 @@ class Method:
 
     def method_success(self) -> None:
         self.performance = self.performance * self.success_adjust_rate
+        self.iteration_succeed += 1
 
     def execute(self, log, shape_types: list) -> bool:
         self.times_called += 1
         attempts = 0
         repeat = True
         duration = 0
+
+        self.method_used = True
+
         while attempts < constants.max_attempts and repeat:
             if len(log.shapes) > 0:
                 succeeded, duration = self.method_function(name=self.name, log=log, shape_types=shape_types)
@@ -530,7 +535,6 @@ class Method:
                 repeat = False
 
             attempts += 1
-            self.set_used()
 
             if succeeded:
                 logger.debug(f"Method {self.name} succeeded in {attempts} attempts.")
@@ -545,9 +549,6 @@ class Method:
         self.total_attempted += attempts
         return False
 
-    def set_used(self) -> None:
-        self.method_used = True
-
 
 def update_method_probability(methods: list, accepted_solution) -> None:
     for method in methods:
@@ -555,9 +556,14 @@ def update_method_probability(methods: list, accepted_solution) -> None:
             method.performance = (method.performance * constants.method_sensitivity_acceptance *
                                   max(0.1, math.sqrt(method.total_succeeded / method.total_attempted)))
         elif method.method_used:
-            method.performance = method.performance * constants.method_sensitivity_rejection
+            method.performance = (method.performance * constants.method_sensitivity_rejection **
+                                  (1 + method.iteration_succeed/constants.max_attempts))
 
     total_performance = sum([method.performance for method in methods])
     for method in methods:
+        logger.debug(f"Updating method {method.name} from {method.probability} to "
+                     f"{method.performance / total_performance} - Method Used?: {method.method_used}")
         method.probability = method.performance / total_performance
+        method.performance = method.performance * 10
         method.method_used = False
+        method.iteration_succeed = 0

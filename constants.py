@@ -10,7 +10,7 @@ error_margin = 0.0001
 ALNS Parameters
 """
 starting_temperature = 100
-max_iterations = 100
+max_iterations = 200
 fill_up_iterations = 5
 
 min_destroy_degree = 1
@@ -34,7 +34,7 @@ log_selection_accepted = 0.99
 log_selection_rejected = 0.9
 
 method_sensitivity_acceptance = 0.99
-method_sensitivity_rejection = 0.95
+method_sensitivity_rejection = 0.98
 
 # Score parameters
 usage_multiplier = 1
