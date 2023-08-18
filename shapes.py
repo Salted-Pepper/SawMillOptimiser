@@ -25,12 +25,11 @@ class ShapeType:
         """
         self.type_id = type_id
         type_id += 1
-        if width is not None:
-            self.width = width
-            self.height = height
-            self.ratio = ratio
-            self.demand = demand
-            self.colour = colour
+        self.width = width
+        self.height = height
+        self.ratio = ratio
+        self.demand = demand
+        self.colour = colour
         self.duplicate_id = duplicate_id
 
         # Button values

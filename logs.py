@@ -30,6 +30,7 @@ class Log:
         else:
             self.log_id = copy_id
         self.diameter = diameter
+        self.saw_kerf = None
 
         # Efficiency Measures
         self.recovery_rate = None
@@ -49,14 +50,20 @@ class Log:
         # Log buttons for inputs
         self.label = None
         self.diameter_input = None
+        self.saw_kerf_input = None
         self.remove_button = None
 
     def set_diameter(self):
-        self.diameter = self.diameter_input.get()
+        self.diameter = float(self.diameter_input.get())
+        self.volume = math.pi * (self.diameter / 2) ** 2
+
+    def set_saw_kerf(self):
+        self.saw_kerf = float(self.saw_kerf_input.get())
 
     def remove_labels(self):
         self.label.grid_remove()
         self.diameter_input.grid_remove()
+        self.saw_kerf_input.grid_remove()
         self.remove_button.grid_remove()
 
     def plot_log(self) -> None:

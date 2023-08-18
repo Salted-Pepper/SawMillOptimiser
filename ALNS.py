@@ -148,7 +148,7 @@ def run_ALNS(logs: list, shape_types: list):
             log.selection_weight = log.selection_weight * constants.log_selection_accepted
             del log_new
         else:
-            # Save plot for each iteration (VERY MEMORY INTENSIVE, ONLY FOR CHECKS)
+            # TODO: Remove this part - Save plot for each iteration (VERY MEMORY INTENSIVE, ONLY FOR TESTING)
             log_new.show_plot()
             log_new.fig.savefig(f"plots/log_{log.log_id}_iteration_{iteration}_rejected.png")
             plt.close(log_new.fig)
