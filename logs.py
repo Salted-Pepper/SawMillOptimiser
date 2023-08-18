@@ -20,7 +20,7 @@ log_id = 0
 
 
 class Log:
-    def __init__(self, diameter: float, copy_id: int = None) -> None:
+    def __init__(self, diameter: float = 0, copy_id: int = None) -> None:
         global log_id
 
         # Keep track of copies of logs using same id
@@ -45,6 +45,19 @@ class Log:
         self.ax = None
         self.shapes = []
         self.patches = []
+
+        # Log buttons for inputs
+        self.label = None
+        self.diameter_input = None
+        self.remove_button = None
+
+    def set_diameter(self):
+        self.diameter = self.diameter_input.get()
+
+    def remove_labels(self):
+        self.label.grid_remove()
+        self.diameter_input.grid_remove()
+        self.remove_button.grid_remove()
 
     def plot_log(self) -> None:
         fig = plt.figure(figsize=(9, 9))

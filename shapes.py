@@ -15,7 +15,8 @@ logger.setLevel(logging.DEBUG)
 
 
 class ShapeType:
-    def __init__(self, width: float, height: float, ratio: float, demand: int, colour: str, duplicate_id: int = None):
+    def __init__(self, width: float = None, height: float = None, ratio: float = None,
+                 demand: int = None, colour: str = None, duplicate_id: int = None):
         global type_id
         """
         :param width: General width of shape
@@ -24,12 +25,33 @@ class ShapeType:
         """
         self.type_id = type_id
         type_id += 1
+        if width is not None:
+            self.width = width
+            self.height = height
+            self.ratio = ratio
+            self.demand = demand
+            self.colour = colour
+        self.duplicate_id = duplicate_id
+
+        # Button values
+        self.label = None
+        self.height_input = None
+        self.width_input = None
+        self.colour_input = None
+        self.remove_button = None
+
+    def set_properties(self, width, height, colour):
         self.width = width
         self.height = height
-        self.ratio = ratio
-        self.demand = demand
         self.colour = colour
-        self.duplicate_id = duplicate_id
+        self.ratio = height / width
+
+    def remove_labels(self):
+        self.label.grid_remove()
+        self.height_input.grid_remove()
+        self.width_input.grid_remove()
+        self.colour_input.grid_remove()
+        self.remove_button.grid_remove()
 
 
 class Shape:
