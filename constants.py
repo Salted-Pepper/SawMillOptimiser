@@ -9,6 +9,8 @@ error_margin = 0.0001
 """
 ALNS Parameters
 """
+optimising_text = "Optimising - This might take a while... \n"
+
 starting_temperature = 100
 max_iterations = 200
 fill_up_iterations = 5

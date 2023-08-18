@@ -310,7 +310,7 @@ def random_point_expansion(log: Log, shape_types: list, **kwargs) -> tuple:
                 found_point = True
 
         attempts += 1
-        if attempts > constants.max_iterations:
+        if attempts > 100:
             logging.debug(f"RPE repair failed to find a suitable point")
             t_1 = time.perf_counter()
             return False, t_1 - t_0
@@ -473,7 +473,6 @@ def buddy_extension_repair(log: Log, shape_types: list, **kwargs) -> tuple:
     successful = ALNS_tools.fit_defined_rectangle(left_most_x=x_0, right_most_x=x_1,
                                                   lowest_y=y_0, highest_y=y_1,
                                                   log=log, shape_types=shape_types)
-    logging.debug(f"BER Method Inserting Shape(s) at ({x}, {y})")
     t_1 = time.perf_counter()
     return successful, t_1 - t_0
 

@@ -4,7 +4,6 @@ from logs import Log
 from shapes import ShapeType
 import ALNS
 import time
-import random
 import pandas as pd
 
 import tkinter as tk
@@ -14,7 +13,9 @@ default measurement: millimeters
 default dimensionality: height x width
 """
 
+
 # TODO: Fix Greedy place in case no block fits (now crashes on no max arg in empty list)
+# TODO: Saw kerf per log check
 
 
 def gui_throw_basic_message(title, text):
@@ -22,7 +23,7 @@ def gui_throw_basic_message(title, text):
     error_window = tk.Toplevel(root)
     error_window.title(title)
     error_window.geometry("300x300")
-    tk.Label(error_window, text=text).pack()
+    tk.Label(error_window, text=text, padx=300, pady=300).pack()
 
 
 def attempt_run_ALNS(list_of_logs: list, list_of_shape_types: list, temp_input, ite_input) -> tuple | None:
@@ -86,12 +87,16 @@ def attempt_run_ALNS(list_of_logs: list, list_of_shape_types: list, temp_input, 
                                     text=f"Entered Illegal Dimensions for Shape {shape.type_id}")
             return
 
-    gui_throw_basic_message(title="Optimising In progress",
-                            text="Optimising has started - This might take a while. \n"
-                                 "Approximated time: TBA}")
+    status_window = tk.Toplevel(root)
+    status_window.title("Optimisation in progress...")
+    status_window.geometry("500x500")
+    progress_label = tk.Label(status_window, text=constants.optimising_text, padx=300, pady=300)
+    progress_label.pack()
+
+    root.update()
 
     t_0 = time.perf_counter()
-    solution_quality_df, method_df = apply_ALNS(list_of_logs, list_of_shape_types)
+    solution_quality_df, method_df = apply_ALNS(list_of_logs, list_of_shape_types, progress_label)
     t_1 = time.perf_counter()
 
     print(f"Completed Optimisation Procedure in {(t_1 - t_0) / 60: 0.2f} Minutes!")
@@ -99,8 +104,12 @@ def attempt_run_ALNS(list_of_logs: list, list_of_shape_types: list, temp_input, 
     return solution_quality_df, method_df
 
 
-def apply_ALNS(list_of_logs: list, list_of_shape_types: list) -> tuple:
+def apply_ALNS(list_of_logs: list, list_of_shape_types: list, progress_label: tk.Label) -> tuple:
+    global root
     transposed_shapes = []
+
+    progress_label.config(text=progress_label.cget("text") + " \n Creating Initial Solution...")
+    root.update()
 
     for shape in shape_types:
         if shape.width != shape.height:
@@ -116,13 +125,18 @@ def apply_ALNS(list_of_logs: list, list_of_shape_types: list) -> tuple:
                       logs=list_of_logs,
                       shape_types=list_of_shape_types)
 
-    solution_quality_df, method_df = ALNS.run_ALNS(logs=list_of_logs, shape_types=list_of_shape_types)
+    progress_label.config(text=progress_label.cget("text") + " \n Established Initial Solution...")
+    root.update()
+
+    solution_quality_df, method_df = ALNS.run_ALNS(logs=list_of_logs,
+                                                   shape_types=list_of_shape_types,
+                                                   root=root, progress_label=progress_label)
+
+    ALNS_tools.check_feasibility(list_of_logs=list_of_logs)
 
     for log in list_of_logs:
         log.show_plot()
         log.save_log_plot()
-
-    ALNS_tools.check_feasibility(list_of_logs=list_of_logs)
 
     ALNS_tools.plot_efficiency_data(logs=list_of_logs, df=solution_quality_df)
     ALNS_tools.plot_method_data(method_df)
@@ -172,12 +186,30 @@ def gui_remove_log(log):
     global logs
     logs.remove(log)
     log.remove_labels()
+    for l in logs:
+        if l.log_id > log.log_id:
+            l.log_id -= 1
+            l.label.config(text=f"Log {l.log_id}")
+
+            l.label.grid(row=2 + log.log_id, column=0)
+            l.diameter_input.grid(row=2 + log.log_id, column=1)
+            l.saw_kerf_input.grid(row=2 + log.log_id, column=2)
+            l.remove_button.grid(row=2 + log.log_id, column=3)
 
 
 def gui_remove_shape(shape):
     global shape_types
     shape_types.remove(shape)
     shape.remove_labels()
+    for s in shape_types:
+        if s.type_id > shape.type_id:
+            s.type_id -= 1
+            s.label.config(text=s.type_id)
+
+            s.label.grid(row=2 + s.type_id, column=0)
+            s.height_input.grid(row=2 + s.type_id, column=1)
+            s.width_input.grid(row=2 + s.type_id, column=2)
+            s.remove_button.grid(row=2 + s.type_id, column=3)
 
 
 logs = []
@@ -185,7 +217,7 @@ shape_types = []
 
 root = tk.Tk()
 root.title("Sawmill Optimiser")
-root.geometry("1000x600")
+root.geometry("1200x900")
 
 if __name__ == '__main__':
     """
@@ -213,7 +245,7 @@ if __name__ == '__main__':
     log_id_label.grid(row=1, column=0)
     log_diameter_label.grid(row=1, column=1)
     log_saw_kerf_label.grid(row=1, column=2)
-    add_log_button.grid(row=0, column=3)
+    add_log_button.grid(row=1, column=3)
 
     log_frame.grid(row=1, column=0, columnspan=3)
 
@@ -240,11 +272,9 @@ if __name__ == '__main__':
     add_shape_button.grid(row=1, column=3)
     shape_frame.grid(row=2, column=0, columnspan=3)
 
-
     """
     Input ALNS Parameters
     """
-
     iteration_label = tk.Label(root, text="Max Iterations (Per Log)")
     iteration_input = tk.Entry(root)
     iteration_input.insert(0, constants.max_iterations)

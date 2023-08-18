@@ -13,6 +13,13 @@ logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + 
 logger = logging.getLogger("Shapes")
 logger.setLevel(logging.DEBUG)
 
+list_of_available_colours = ["rosybrown", "goldenrod", "mediumturquoise", "mediumpurple", "lightcoral", "cornsilk",
+                             "azure", "rebeccapurple", "indianred", "gold", "lightcyan", "blueviolet", "brown",
+                             "lemonchiffon", "paleturquoise", "indigo", "firebrick", "palegoldenrod", "darkslategrey",
+                             "darkorchid", "fuchsia", "coral", "orangered", "sienna", "seashell", "chocolate",
+                             "peru", "lightgreen", "crimson", "olive", "yellow", "burlywood", "limegreen", "lightblue",
+                             "powderblue", "salmon", "royalblue", "silver", "palegreen"]
+
 
 class ShapeType:
     def __init__(self, width: float = None, height: float = None, ratio: float = None,
@@ -42,15 +49,25 @@ class ShapeType:
     def set_properties(self, width, height, colour):
         self.width = width
         self.height = height
-        self.colour = colour
+        if colour is not None and colour != "":
+            self.colour = colour
+        elif len(list_of_available_colours) > 0:
+            self.colour = list_of_available_colours.pop()
+        else:
+            self.colour = "grey"
         self.ratio = height / width
 
     def remove_labels(self):
+        global type_id
+        type_id -= 1
         self.label.grid_remove()
         self.height_input.grid_remove()
         self.width_input.grid_remove()
         self.colour_input.grid_remove()
         self.remove_button.grid_remove()
+
+    def __str__(self):
+        return f"ID: {self.type_id}, h: {self.height}, w: {self.width}"
 
 
 class Shape:

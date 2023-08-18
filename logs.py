@@ -61,6 +61,8 @@ class Log:
         self.saw_kerf = float(self.saw_kerf_input.get())
 
     def remove_labels(self):
+        global log_id
+        log_id -= 1
         self.label.grid_remove()
         self.diameter_input.grid_remove()
         self.saw_kerf_input.grid_remove()
@@ -86,8 +88,8 @@ class Log:
         self.ax.add_patch(circle)
         self.ax.set_title(f"id: {self.log_id}, "
                           r"$d_i$:" + f"{self.diameter}, "
-                          r"$\phi_i$:" + f"{self.calculate_efficiency():.2f}, "
-                          r"$\alpha_i$:" + f"{self.calculate_sawdust_created()/self.volume:.2f}" + extra_text)
+                          f"Usage:" + f"{self.calculate_efficiency():.2f}, "
+                          f"Saw dust:" + f"{self.calculate_sawdust_created()/self.volume:.2f}" + extra_text)
         self.patches.append(circle)
 
     def calculate_efficiency(self) -> float:

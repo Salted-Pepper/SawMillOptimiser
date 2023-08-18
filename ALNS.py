@@ -1,7 +1,10 @@
 import logging
+import time
+
 import pandas as pd
 import random
 import datetime
+import tkinter as tk
 
 from matplotlib import pyplot as plt
 
@@ -24,7 +27,8 @@ logging.getLogger("PIL.PngImagePlugin").setLevel(logging.WARNING)
 logger.setLevel(logging.DEBUG)
 
 
-def run_ALNS(logs: list, shape_types: list):
+def run_ALNS(logs: list, shape_types: list, root: tk.Tk, progress_label: tk.Label):
+
     solution_quality_df = pd.DataFrame(columns=["iteration", "log", "score", "saw_dust", "volume_used", "efficiency"])
     method_df = pd.DataFrame(columns=["iteration", "method", "probability",
                                       "times_called", "times_tried", "times_success"])
@@ -61,7 +65,10 @@ def run_ALNS(logs: list, shape_types: list):
     Start ALNS Sequence, select random methods to repair and destroy based on assigned probabilities
     """
     while temperature > 1 and iteration <= constants.max_iterations * len(logs):
-
+        t_0 = time.perf_counter()
+        progress_label.config(text=constants.optimising_text + f"Iteration {iteration} out of "
+                                                               f"{constants.max_iterations * len(logs)}")
+        root.update()
         log = ALNS_tools.select_log(logs)
         logger.debug(f"\n\nGoing into iteration {iteration} with temperature {temperature}... "
                      f"Selected {log.log_id} with diameter {log.diameter}")
@@ -132,10 +139,10 @@ def run_ALNS(logs: list, shape_types: list):
         Single Iteration completed, process changes and update parameter values
         """
         if accept_new_solution:
-            # Save plot for each iteration (VERY MEMORY INTENSIVE, ONLY FOR CHECKS)
-            log_new.show_plot()
-            log_new.fig.savefig(f"plots/log_{log.log_id}_iteration_{iteration}_accepted.png")
-            plt.close(log_new.fig)
+            # Remove this part - Save plot for each iteration (VERY MEMORY INTENSIVE, ONLY FOR TESTING)
+            # log_new.show_plot()
+            # log_new.fig.savefig(f"plots/log_{log.log_id}_iteration_{iteration}_accepted.png")
+            # plt.close(log_new.fig)
 
             logger.debug(f"New solution has been accepted with improvement {delta}")
             log.shapes = log_new.shapes
@@ -148,10 +155,10 @@ def run_ALNS(logs: list, shape_types: list):
             log.selection_weight = log.selection_weight * constants.log_selection_accepted
             del log_new
         else:
-            # TODO: Remove this part - Save plot for each iteration (VERY MEMORY INTENSIVE, ONLY FOR TESTING)
-            log_new.show_plot()
-            log_new.fig.savefig(f"plots/log_{log.log_id}_iteration_{iteration}_rejected.png")
-            plt.close(log_new.fig)
+            # Remove this part - Save plot for each iteration (VERY MEMORY INTENSIVE, ONLY FOR TESTING)
+            # log_new.show_plot()
+            # log_new.fig.savefig(f"plots/log_{log.log_id}_iteration_{iteration}_rejected.png")
+            # plt.close(log_new.fig)
 
             logger.debug(f"New solution has been rejected, delta of {delta}")
             log.selection_weight = log.selection_weight * constants.log_selection_rejected
@@ -175,6 +182,8 @@ def run_ALNS(logs: list, shape_types: list):
                               f"and performance {method.performance}")
             for log in logs:
                 logging.debug(f"Log {log.log_id} has weight {log.selection_weight}")
+        t_1 = time.perf_counter()
+        print(f"Iteration {iteration} - Time required {(t_1 - t_0)/60 :.2f}")
 
     # Push shapes to centre at end
     for log in logs:
@@ -306,11 +315,15 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                               stage_2_values,
                               [shape.height, x_left, x_right, h_n]])
 
-        best_complete_solution = max(solutions, key=lambda solution: solution[0])
-        logger.debug(f"Optimal solution has a total usage rate of {best_complete_solution[0]}")
+        if len(solutions) > 0:
+            best_complete_solution = max(solutions, key=lambda solution: solution[0])
+            logger.debug(f"Optimal solution has a total usage rate of {best_complete_solution[0]}")
 
-        shapes_in_central = best_complete_solution[1]
-        shapes_in_top_bot = best_complete_solution[2]
+            shapes_in_central = best_complete_solution[1]
+            shapes_in_top_bot = best_complete_solution[2]
+        else:
+            logger.warning(f"No solution found for log {log.log_id}")
+            continue
 
         for var in best_complete_solution[1]:
             logger.debug(f"Shape {var[0]} has quantity {var[1]}")
