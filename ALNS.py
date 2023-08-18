@@ -246,7 +246,7 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                 # print("\n Solution:")
                 # print("Obj Value = ", solver.Objective().Value())
                 stage_1_values = [[v[3], v[0].solution_value()] for v in var_stage_1]
-                usage = solver.Objective().Value()
+                usage_stage_1 = solver.Objective().Value()
                 # print(f"For height {shape.height}, found usage of {usage}.")
             else:
                 raise ValueError("Solution Not Converged")
@@ -288,9 +288,9 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                     # print("Obj Value = ", solver.Objective().Value())
                     # for v in var_stage_2:
                     #     print(v[3], " has value ", v[0].solution_value())
-                    usage = solver.Objective().Value()
+                    usage_stage_2 = solver.Objective().Value()
                     # print(f"For height {shape.height}, found usage of {usage}.")
-                    stage_2_solutions.append([usage,
+                    stage_2_solutions.append([usage_stage_2,
                                               sub_rectangle_volume,
                                               [[v[3], v[0].solution_value()] for v in var_stage_2],
                                               h_n])
@@ -304,10 +304,10 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                 rect_vol_stage_2 = best_stage_2_solution[1]
                 stage_2_values = best_stage_2_solution[2]
                 h_n = best_stage_2_solution[3]
-                rel_usage = (usage + 2 * usage_stage_2) / (rectangle_volume + 2 * rect_vol_stage_2)
+                rel_usage = (usage_stage_1 + 2 * usage_stage_2) / (rectangle_volume + 2 * rect_vol_stage_2)
             else:
                 stage_2_values = []
-                rel_usage = usage / rectangle_volume
+                rel_usage = usage_stage_1 / rectangle_volume
                 h_n = 0
 
             solutions.append([rel_usage,
