@@ -159,10 +159,10 @@ class Shape:
                                            self.width, self.height,
                                            facecolor=(0, 1, 0, 0.5))
 
-        self.rect_kerf = mpatches.Rectangle((self.x - constants.saw_kerf,
-                                             self.y - constants.saw_kerf),
-                                            self.width + 2 * constants.saw_kerf,
-                                            self.height + 2 * constants.saw_kerf,
+        self.rect_kerf = mpatches.Rectangle((self.x - self.log.saw_kerf,
+                                             self.y - self.log.saw_kerf),
+                                            self.width + 2 * self.log.saw_kerf,
+                                            self.height + 2 * self.log.saw_kerf,
                                             color="black")
         self.log.ax.add_patch(self.rect_kerf)
         self.log.ax.add_patch(self.rect)
@@ -196,8 +196,8 @@ class Shape:
         self.y = None
 
     def check_if_point_in_shape(self, x: float, y: float):
-        if (self.x - constants.saw_kerf <= x <= self.x + self.width + constants.saw_kerf
-                and self.y - constants.saw_kerf <= y <= self.y + self.height + constants.saw_kerf):
+        if (self.x - self.log.saw_kerf <= x <= self.x + self.width + self.log.saw_kerf
+                and self.y - self.log.saw_kerf <= y <= self.y + self.height + self.log.saw_kerf):
             return True
         else:
             return False

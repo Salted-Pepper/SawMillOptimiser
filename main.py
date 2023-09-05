@@ -14,7 +14,6 @@ default dimensionality: height x width
 """
 
 
-# TODO: Fix Greedy place in case no block fits (now crashes on no max arg in empty list)
 # TODO: Saw kerf per log check
 
 
@@ -70,6 +69,7 @@ def attempt_run_ALNS(list_of_logs: list, list_of_shape_types: list, temp_input, 
             if sk == 0:
                 raise ValueError
             log.set_saw_kerf()
+            print(f"Set saw kerf {log.saw_kerf} for log {log.log_id}")
         except ValueError:
             gui_throw_basic_message(title="Invalid Log Input",
                                     text=f"Invalid Saw Kerf Entered for log {log.log_id}")
@@ -98,8 +98,8 @@ def attempt_run_ALNS(list_of_logs: list, list_of_shape_types: list, temp_input, 
     t_0 = time.perf_counter()
     solution_quality_df, method_df = apply_ALNS(list_of_logs, list_of_shape_types, progress_label)
     t_1 = time.perf_counter()
-
-    print(f"Completed Optimisation Procedure in {(t_1 - t_0) / 60: 0.2f} Minutes!")
+    status_window.title("Optimisation Finished!")
+    progress_label.config(text=f"Completed Optimisation Procedure in{(t_1 - t_0) / 60: 0.2f} Minutes!")
 
     return solution_quality_df, method_df
 
@@ -218,6 +218,7 @@ shape_types = []
 root = tk.Tk()
 root.title("Sawmill Optimiser")
 root.geometry("1200x900")
+root.iconbitmap("saw.ico")
 
 if __name__ == '__main__':
     """

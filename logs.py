@@ -20,7 +20,7 @@ log_id = 0
 
 
 class Log:
-    def __init__(self, diameter: float = 0, copy_id: int = None) -> None:
+    def __init__(self, diameter: float = 0, saw_kerf=None, copy_id: int = None) -> None:
         global log_id
 
         # Keep track of copies of logs using same id
@@ -30,7 +30,7 @@ class Log:
         else:
             self.log_id = copy_id
         self.diameter = diameter
-        self.saw_kerf = None
+        self.saw_kerf = saw_kerf
 
         # Efficiency Measures
         self.recovery_rate = None
@@ -88,18 +88,18 @@ class Log:
         self.ax.add_patch(circle)
         self.ax.set_title(f"id: {self.log_id}, "
                           r"$d_i$:" + f"{self.diameter}, "
-                          f"Usage:" + f"{self.calculate_efficiency():.2f}, "
-                          f"Saw dust:" + f"{self.calculate_sawdust_created()/self.volume:.2f}" + extra_text)
+                                      f"Usage:" + f"{self.calculate_efficiency():.2f}, "
+                                                  f"Saw dust:" + f"{self.calculate_sawdust_created() / self.volume:.2f}" + extra_text)
         self.patches.append(circle)
 
     def calculate_efficiency(self) -> float:
         self.efficiency = self.volume_used / self.volume
         return self.efficiency
 
-    def calculate_efficiency_sub_rectangle(self, x_0, x_1, y_0, y_1) -> tuple:
+    def calculate_efficiency_sub_rectangle(self, x_0, x_1, y_0, y_1, saw_kerf: float) -> tuple:
         intersecting_shapes = []
         for shape in self.shapes:
-            if ALNS_tools.check_if_shape_in_rectangle(shape, x_0, x_1, y_0, y_1):
+            if ALNS_tools.check_if_shape_in_rectangle(shape, x_0, x_1, y_0, y_1, saw_kerf=saw_kerf):
                 intersecting_shapes.append(shape)
 
         if len(intersecting_shapes) == 0:
@@ -147,7 +147,7 @@ class Log:
                 return False
 
             for s2 in self.shapes[index_1 + 1:]:
-                if check_shapes_intersect(s1, s2):
+                if check_shapes_intersect(s1, s2, self.saw_kerf):
                     logger.critical(f"Shapes {s1.shape_id} and {s2.shape_id} intersect in log {self.log_id}!")
                     logger.critical(f"Coordinates are: (({s1.x},{s1.y}), "
                                     f"({s1.x + s1.width} {s1.y + s1.height})),"
@@ -167,14 +167,14 @@ class Log:
         # First calculate total sawdust
         saw_dust_m_2 = 0
         for shape in self.shapes:
-            saw_dust = (2 * shape.width * constants.saw_kerf
-                        + 2 * shape.height * constants.saw_kerf
-                        + 4 * (constants.saw_kerf ** 2))
+            saw_dust = (2 * shape.width * self.saw_kerf
+                        + 2 * shape.height * self.saw_kerf
+                        + 4 * (self.saw_kerf ** 2))
             saw_dust_m_2 += saw_dust
         # Calculate the shared sawdust - we consider each combination of shape once, hence we only slice forward
         for index, shape_1 in enumerate(self.shapes):
-            for shape_2 in self.shapes[index+1:]:
-                saw_dust_m_2 = saw_dust_m_2 - calculate_sawdust_shared_between_shapes(shape_1, shape_2)
+            for shape_2 in self.shapes[index + 1:]:
+                saw_dust_m_2 = saw_dust_m_2 - calculate_sawdust_shared_between_shapes(shape_1, shape_2, self.saw_kerf)
         return saw_dust_m_2
 
     def remove_shape(self, shape: Shape) -> None:
@@ -220,14 +220,14 @@ class Log:
             min_space_bot, _ = c_shape.log.calculate_edge_positions_on_circle(c_shape.y)
             min_space_top, _ = c_shape.log.calculate_edge_positions_on_circle((c_shape.y + c_shape.height))
             min_space = c_shape.x - max(min_space_bot, min_space_top)
-            other_shapes = [s for s in other_shapes if s.x + s.width + constants.saw_kerf
+            other_shapes = [s for s in other_shapes if s.x + s.width + self.saw_kerf
                             <= c_shape.x + constants.error_margin]
             # Check if shapes are on the same height, and whether the shape is on the left (direction of orientation)
             for shape in other_shapes:
-                if not (shape.y + shape.height + constants.saw_kerf <= c_shape.y or
-                        shape.y >= c_shape.y + c_shape.height + constants.saw_kerf):
-                    if c_shape.x - (shape.x + shape.width + constants.saw_kerf) < min_space:
-                        min_space = c_shape.x - (shape.x + shape.width + constants.saw_kerf)
+                if not (shape.y + shape.height + self.saw_kerf <= c_shape.y or
+                        shape.y >= c_shape.y + c_shape.height + self.saw_kerf):
+                    if c_shape.x - (shape.x + shape.width + self.saw_kerf) < min_space:
+                        min_space = c_shape.x - (shape.x + shape.width + self.saw_kerf)
                         if min_space < -constants.error_margin:
                             logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
                                          f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
@@ -244,12 +244,12 @@ class Log:
             _, max_space_top = c_shape.log.calculate_edge_positions_on_circle((c_shape.y + c_shape.height))
             min_space = min(max_space_bot, max_space_top) - (c_shape.x + c_shape.width)
             other_shapes = [s for s in other_shapes if s.x + constants.error_margin >=
-                            c_shape.x + c_shape.width + constants.saw_kerf]
+                            c_shape.x + c_shape.width + self.saw_kerf]
             for shape in other_shapes:
-                if not (shape.y + shape.height + constants.saw_kerf <= c_shape.y or
-                        shape.y >= c_shape.y + c_shape.height + constants.saw_kerf):
-                    if shape.x - (c_shape.x + c_shape.width + constants.saw_kerf) < min_space:
-                        min_space = shape.x - (c_shape.x + c_shape.width + constants.saw_kerf)
+                if not (shape.y + shape.height + self.saw_kerf <= c_shape.y or
+                        shape.y >= c_shape.y + c_shape.height + self.saw_kerf):
+                    if shape.x - (c_shape.x + c_shape.width + self.saw_kerf) < min_space:
+                        min_space = shape.x - (c_shape.x + c_shape.width + self.saw_kerf)
                         if min_space < -constants.error_margin:
                             logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
                                          f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
@@ -266,12 +266,12 @@ class Log:
             _, max_space_right = c_shape.log.calculate_edge_positions_on_circle((c_shape.x + c_shape.width))
             min_space = min(max_space_left, max_space_right) - (c_shape.y + c_shape.height)
             other_shapes = [s for s in other_shapes if s.y + constants.error_margin >=
-                            c_shape.y + c_shape.height + constants.saw_kerf]
+                            c_shape.y + c_shape.height + self.saw_kerf]
             for shape in other_shapes:
-                if not (shape.x + shape.width + constants.saw_kerf <= c_shape.x or
-                        shape.x >= c_shape.x + c_shape.width + constants.saw_kerf):
-                    if shape.y - (c_shape.y + c_shape.height + constants.saw_kerf) < min_space:
-                        min_space = shape.y - (c_shape.y + c_shape.height + constants.saw_kerf)
+                if not (shape.x + shape.width + self.saw_kerf <= c_shape.x or
+                        shape.x >= c_shape.x + c_shape.width + self.saw_kerf):
+                    if shape.y - (c_shape.y + c_shape.height + self.saw_kerf) < min_space:
+                        min_space = shape.y - (c_shape.y + c_shape.height + self.saw_kerf)
                         if min_space < -constants.error_margin:
                             logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
                                          f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
@@ -289,13 +289,13 @@ class Log:
             min_space_left, _ = c_shape.log.calculate_edge_positions_on_circle(c_shape.x)
             min_space_right, _ = c_shape.log.calculate_edge_positions_on_circle((c_shape.x + c_shape.width))
             min_space = c_shape.y - max(min_space_left, min_space_right)
-            other_shapes = [s for s in other_shapes if s.y + s.height + constants.saw_kerf <=
+            other_shapes = [s for s in other_shapes if s.y + s.height + self.saw_kerf <=
                             c_shape.y + constants.error_margin]
             for shape in other_shapes:
-                if not (shape.x + shape.width + constants.saw_kerf <= c_shape.x or
-                        shape.x >= c_shape.x + c_shape.width + constants.saw_kerf):
-                    if c_shape.y - (shape.y + shape.height + constants.saw_kerf) < min_space:
-                        min_space = c_shape.y - (shape.y + shape.height + constants.saw_kerf)
+                if not (shape.x + shape.width + self.saw_kerf <= c_shape.x or
+                        shape.x >= c_shape.x + c_shape.width + self.saw_kerf):
+                    if c_shape.y - (shape.y + shape.height + self.saw_kerf) < min_space:
+                        min_space = c_shape.y - (shape.y + shape.height + self.saw_kerf)
                         if min_space < -constants.error_margin:
                             logger.error(f"Min space is {min_space} with shape {shape.shape_id}: {shape.x},{shape.y}, "
                                          f"cshape {c_shape.shape_id}:{c_shape.x}, {c_shape.y}")
@@ -329,12 +329,12 @@ class Log:
             # Set log boundaries for the shape
             min_space, _ = self.calculate_edge_positions_on_circle(y)
             min_space = x - min_space
-            other_shapes = [s for s in self.shapes if s.x + s.width + constants.saw_kerf <= x + constants.error_margin]
+            other_shapes = [s for s in self.shapes if s.x + s.width + self.saw_kerf <= x + constants.error_margin]
             # Check if shapes are on the same height, and whether the shape is on the left (direction of orientation)
             for shape in other_shapes:
-                if not (shape.y + shape.height + constants.saw_kerf <= y or shape.y >= y):
-                    if x - (shape.x + shape.width + constants.saw_kerf) < min_space:
-                        min_space = x - (shape.x + shape.width + constants.saw_kerf)
+                if not (shape.y + shape.height + self.saw_kerf <= y or shape.y >= y):
+                    if x - (shape.x + shape.width + self.saw_kerf) < min_space:
+                        min_space = x - (shape.x + shape.width + self.saw_kerf)
                         if min_space < -constants.error_margin:
                             raise ValueError
             # Check Log Boundaries
@@ -347,7 +347,7 @@ class Log:
             min_space = max_space - x
             other_shapes = [s for s in self.shapes if s.x + constants.error_margin >= x]
             for shape in other_shapes:
-                if not (shape.y + shape.height + constants.saw_kerf <= y or
+                if not (shape.y + shape.height + self.saw_kerf <= y or
                         shape.y >= y):
                     if shape.x - x < min_space:
                         min_space = shape.x - x
@@ -363,7 +363,7 @@ class Log:
             min_space = max_space - y
             other_shapes = [s for s in self.shapes if s.y + constants.error_margin >= y]
             for shape in other_shapes:
-                if not shape.x + shape.width + constants.saw_kerf <= x or shape.x >= x:
+                if not shape.x + shape.width + self.saw_kerf <= x or shape.x >= x:
                     if shape.y - y < min_space:
                         min_space = shape.y - y
                         if min_space < -constants.error_margin:
@@ -378,12 +378,12 @@ class Log:
         elif orientation == "down":
             min_space, _ = self.calculate_edge_positions_on_circle(x)
             min_space = y - min_space
-            other_shapes = [s for s in self.shapes if s.y + s.height + constants.saw_kerf <=
+            other_shapes = [s for s in self.shapes if s.y + s.height + self.saw_kerf <=
                             y + constants.error_margin]
             for shape in other_shapes:
-                if not shape.x + shape.width + constants.saw_kerf <= x or shape.x >= x:
-                    if y - (shape.y + shape.height + constants.saw_kerf) < min_space:
-                        min_space = y - (shape.y + shape.height + constants.saw_kerf)
+                if not shape.x + shape.width + self.saw_kerf <= x or shape.x >= x:
+                    if y - (shape.y + shape.height + self.saw_kerf) < min_space:
+                        min_space = y - (shape.y + shape.height + self.saw_kerf)
                         if min_space < -constants.error_margin:
                             raise ValueError
             # Check Log Boundaries
@@ -397,8 +397,7 @@ class Log:
         return min_space
 
 
-def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
-    sk = constants.saw_kerf
+def check_shapes_intersect(shape_a: Shape, shape_b: Shape, sk: float) -> bool:
     a_x_1 = shape_a.x
     a_x_2 = shape_a.x + shape_a.width
     a_y_1 = shape_a.y
@@ -419,42 +418,38 @@ def check_shapes_intersect(shape_a: Shape, shape_b: Shape) -> bool:
 
 
 def calculate_sawdust_shared_between_shapes(shape_a, shape_b, saw_kerf=None) -> float:
-    if saw_kerf is None:
-        sk = constants.saw_kerf
-    else:
-        sk = saw_kerf
     # Check if shapes are within saw kerf reach of each other
-    if shape_a.x - sk <= shape_b.x + shape_b.width + sk \
-            and shape_a.x + shape_a.width + sk >= shape_b.x - sk \
-            and shape_a.y - sk <= shape_b.y + shape_b.height + sk \
-            and shape_a.y + shape_a.height + sk >= shape_b.y - sk:
-        if 0 < shape_a.x - (shape_b.x + shape_b.width) <= 2*sk:
+    if shape_a.x - saw_kerf <= shape_b.x + shape_b.width + saw_kerf \
+            and shape_a.x + shape_a.width + saw_kerf >= shape_b.x - saw_kerf \
+            and shape_a.y - saw_kerf <= shape_b.y + shape_b.height + saw_kerf \
+            and shape_a.y + shape_a.height + saw_kerf >= shape_b.y - saw_kerf:
+        if 0 < shape_a.x - (shape_b.x + shape_b.width) <= 2 * saw_kerf:
             # Shape b is to left of shape a
-            y_min = max(shape_a.y - sk, shape_b.y - sk)
-            y_max = min(shape_a.y + shape_a.height + sk, shape_b.y + shape_b.height + sk)
+            y_min = max(shape_a.y - saw_kerf, shape_b.y - saw_kerf)
+            y_max = min(shape_a.y + shape_a.height + saw_kerf, shape_b.y + shape_b.height + saw_kerf)
             # The shared sawdust is the overlap in sawkerf, times the length of the overlap
-            return (2*sk - (shape_a.x - (shape_b.x + shape_b.width))) * (y_max - y_min)
-        elif 0 < shape_b.x - (shape_a.x + shape_a.width) <= 2*sk:
+            return (2 * saw_kerf - (shape_a.x - (shape_b.x + shape_b.width))) * (y_max - y_min)
+        elif 0 < shape_b.x - (shape_a.x + shape_a.width) <= 2 * saw_kerf:
             # Shape b is right of shape a
-            y_min = max(shape_a.y - sk, shape_b.y - sk)
-            y_max = min(shape_a.y + shape_a.height + sk, shape_b.y + shape_b.height + sk)
+            y_min = max(shape_a.y - saw_kerf, shape_b.y - saw_kerf)
+            y_max = min(shape_a.y + shape_a.height + saw_kerf, shape_b.y + shape_b.height + saw_kerf)
             # The shared sawdust is the overlap in sawkerf, times the length of the overlap
-            return (2*sk - (shape_b.x - (shape_a.x + shape_a.width))) * (y_max - y_min)
-        elif 0 < shape_a.y - (shape_b.y + shape_b.height) <= 2*sk:
+            return (2 * saw_kerf - (shape_b.x - (shape_a.x + shape_a.width))) * (y_max - y_min)
+        elif 0 < shape_a.y - (shape_b.y + shape_b.height) <= 2 * saw_kerf:
             # Shape b is below shape a
-            x_min = max(shape_a.x - sk, shape_b.x - sk)
-            x_max = min(shape_a.x + shape_a.width + sk, shape_b.x + shape_b.width + sk)
+            x_min = max(shape_a.x - saw_kerf, shape_b.x - saw_kerf)
+            x_max = min(shape_a.x + shape_a.width + saw_kerf, shape_b.x + shape_b.width + saw_kerf)
             # The shared sawdust is the overlap in sawkerf, times the length of the overlap
-            return (2*sk - (shape_a.y - (shape_b.y + shape_b.height))) * (x_max - x_min)
-        elif 0 < shape_a.y + shape_a.height - shape_b.y <= 2*sk:
+            return (2 * saw_kerf - (shape_a.y - (shape_b.y + shape_b.height))) * (x_max - x_min)
+        elif 0 < shape_a.y + shape_a.height - shape_b.y <= 2 * saw_kerf:
             # Shape b is above shape a
-            x_min = max(shape_a.x - sk, shape_b.x - sk)
-            x_max = min(shape_a.x + shape_a.width + sk, shape_b.x + shape_b.width + sk)
+            x_min = max(shape_a.x - saw_kerf, shape_b.x - saw_kerf)
+            x_max = min(shape_a.x + shape_a.width + saw_kerf, shape_b.x + shape_b.width + saw_kerf)
             # The shared sawdust is the overlap in sawkerf, times the length of the overlap
-            return (2*sk - (shape_a.y + shape_a.height - shape_b.y)) * (x_max - x_min)
+            return (2 * saw_kerf - (shape_a.y + shape_a.height - shape_b.y)) * (x_max - x_min)
         else:
             # TODO: Check sawdust calculation for only corners overlapping
-            return sk ** 2
+            return saw_kerf ** 2
     else:
         return 0
 

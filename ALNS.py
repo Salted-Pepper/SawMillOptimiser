@@ -34,9 +34,9 @@ def run_ALNS(logs: list, shape_types: list, root: tk.Tk, progress_label: tk.Labe
                                       "times_called", "times_tried", "times_success"])
     iteration = 1
     temperature = constants.starting_temperature
-    destroy_degree = 1
-    repair_degree = 12
-    tuck_degree = 10
+    destroy_degree = 2
+    repair_degree = 10
+    tuck_degree = 8
 
     tuck_start_prob = 1 / 3
     tuck_between_prob = 1 / 3
@@ -73,7 +73,7 @@ def run_ALNS(logs: list, shape_types: list, root: tk.Tk, progress_label: tk.Labe
         logger.debug(f"\n\nGoing into iteration {iteration} with temperature {temperature}... "
                      f"Selected {log.log_id} with diameter {log.diameter}")
         # Invoke copy here to ensure changes do not apply unless new solution is accepted
-        log_new = Log(log.diameter, copy_id=log.log_id)
+        log_new = Log(diameter=log.diameter, saw_kerf=log.saw_kerf, copy_id=log.log_id)
         for shape in log.shapes:
             Shape(shape_type=shape.type, x=shape.x, y=shape.y, copy_id=shape.shape_id).assign_to_log(log_new)
 
@@ -111,7 +111,7 @@ def run_ALNS(logs: list, shape_types: list, root: tk.Tk, progress_label: tk.Labe
 
             repairs = 0
             repair_iterations = 0
-            while repairs <= math.floor(repair_degree) and repair_iterations <= constants.max_iterations:
+            while repairs <= math.floor(repair_degree):
                 repair_iterations += 1
                 repair_method = random.choices(repair_methods,
                                                weights=[method.probability for method in repair_methods], k=1)[0]
@@ -120,8 +120,13 @@ def run_ALNS(logs: list, shape_types: list, root: tk.Tk, progress_label: tk.Labe
                 if method_was_successful:
                     logger.debug(f"Repair method {repair_method.name} was successful")
                     repairs += 1
+                    repair_iterations = 0
                 else:
                     logger.debug(f"Repair method {repair_method.name} was unsuccessful")
+                    # Try repairing a maximal amount of times, successful attempts will reset the timer.
+                    if repair_iterations > constants.max_attempts:
+                        repairs += 1
+                        repair_iterations = 0
 
             if tuck_timing == "end":
                 for _ in range(math.floor(tuck_degree)):
@@ -236,7 +241,7 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                                     short_shape.width, short_shape.height, short_shape.type_id])
 
             # add constraint for maximum length
-            solver.Add(sum([v[0] * (v[1] + constants.saw_kerf)
+            solver.Add(sum([v[0] * (v[1] + log.saw_kerf)
                             for v in var_stage_1]) <= w_bar)
             solver.Maximize(sum([v[0] * v[1] * v[2] for v in var_stage_1]))
 
@@ -255,14 +260,14 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
             ---OPTIMISING NORTHERN/SOUTHERN RECTANGLE---
             STAGE 2 OPTIMISATION
             """
-            height_a = (log.diameter - (shape.height + 2 * constants.saw_kerf)) / 2
+            height_a = (log.diameter - (shape.height + 2 * log.saw_kerf)) / 2
             stage_2_solutions = []
             shorter_a_shapes = [shape_2 for shape_2 in shape_types if shape_2.height <= height_a]
 
             for short_shape in shorter_a_shapes:
                 h_n = short_shape.height
                 r = log.diameter / 2
-                inner_value = r ** 2 - ((log.diameter + (shape.height + 2 * constants.saw_kerf)) / 2 + h_n - r) ** 2
+                inner_value = r ** 2 - ((log.diameter + (shape.height + 2 * log.saw_kerf)) / 2 + h_n - r) ** 2
 
                 x_left_north = r - math.sqrt(inner_value)
                 x_right_north = r + math.sqrt(inner_value)
@@ -277,7 +282,7 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                     var_stage_2.append([solver.IntVar(0, solver.infinity(), 'x' + str(s.type_id)),
                                         s.width, s.height, s.type_id])
 
-                solver.Add(sum([v[0] * (v[1] + constants.saw_kerf)
+                solver.Add(sum([v[0] * (v[1] + log.saw_kerf)
                                 for v in var_stage_2]) <= width_n)
                 solver.Maximize(sum([v[0] * v[1] * v[2] for v in var_stage_2]))
 
@@ -352,14 +357,14 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                 shapes.append(Shape(shape_type=shape_type, x=x, y=y))
                 logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                              f"h:{shape_type.height} at ({x}, {y})")
-                x += shape_type.width + constants.saw_kerf
+                x += shape_type.width + log.saw_kerf
 
-        y_plus = (log.diameter + (h + 2 * constants.saw_kerf)) / 2 + h_n
+        y_plus = (log.diameter + (h + 2 * log.saw_kerf)) / 2 + h_n
         x_left, x_right = log.calculate_edge_positions_on_circle(z=y_plus)
 
         x = x_left
-        y_north = y + h + constants.saw_kerf
-        y_south = y - h_n - constants.saw_kerf
+        y_north = y + h + log.saw_kerf
+        y_south = y - h_n - log.saw_kerf
 
         for shape_info in shapes_in_top_bot:
             shape_id = shape_info[0]
@@ -374,7 +379,7 @@ def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
                 logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                              f"h:{shape_type.height} at ({x}, {y_south + (h_n - shape_type.height)}) "
                              f"and ({x}, {y_north})")
-                x += shape_type.width + constants.saw_kerf
+                x += shape_type.width + log.saw_kerf
 
         shapes = create_corner_solution(shapes, log, shape_types, h, h_n, y_north, "NW")
         shapes = create_corner_solution(shapes, log, shape_types, h, h_n, y_north, "NE")
@@ -411,12 +416,12 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
     if orientation == "NW":
         left_most_rect = ALNS_tools.find_left_most_shape(top_shapes)
         rect = left_most_rect
-        x_val = rect.x - constants.saw_kerf
+        x_val = rect.x - log.saw_kerf
         logger.debug(f"Left most shape is at ({rect.x}, {rect.y}), with h: {rect.height}, w: {rect.width}")
     elif orientation == "NE":
         right_most_rect = ALNS_tools.find_right_most_shape(top_shapes)
         rect = right_most_rect
-        x_val = rect.x + rect.width + constants.saw_kerf
+        x_val = rect.x + rect.width + log.saw_kerf
         logger.debug(f"Right most shape is at ({rect.x}, {rect.y}), with h: {rect.height}, w: {rect.width}")
     else:
         raise NotImplementedError(f"Orientation {orientation} not implemented.")
@@ -431,7 +436,7 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
                                                                         orientation=orientation)
 
         # Step 2 - Solve LP for corner options
-        if shape.width < (w_m - constants.saw_kerf):
+        if shape.width < (w_m - log.saw_kerf):
             shorter_shapes = [s for s in candidate_shapes
                               if s.height <= h_m]
 
@@ -444,7 +449,7 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
                                        short_shape.width, short_shape.height, short_shape.type_id])
 
             # add constraint for maximum length
-            solver.Add(sum([v[0] * (v[1] + constants.saw_kerf)
+            solver.Add(sum([v[0] * (v[1] + log.saw_kerf)
                             for v in var_north_west]) <= w_m)
             solver.Maximize(sum([v[0] * v[1] * v[2] for v in var_north_west]))
 
@@ -469,7 +474,7 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
         x_maximal = best_corner_solution[2][2]
 
         if orientation == "NW":
-            x = x_maximal + constants.saw_kerf
+            x = x_maximal + log.saw_kerf
         elif orientation == "NE":
             x = x_minimal
         else:
@@ -483,13 +488,13 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
             for i in range(quantity):
 
                 if orientation == "NW":
-                    x -= shape_type.width + constants.saw_kerf
+                    x -= shape_type.width + log.saw_kerf
                     shapes.append(Shape(shape_type=shape_type, x=x, y=y_north))
                     shapes.append(Shape(shape_type=shape_type, x=x,
-                                        y=(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf))
+                                        y=(log.diameter - h) / 2 - shape_type.height - log.saw_kerf))
                     logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                                  f"h:{shape_type.height} at ({x}, "
-                                 f"{(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf}) "
+                                 f"{(log.diameter - h) / 2 - shape_type.height - log.saw_kerf}) "
                                  f"and ({x}, {y_north})")
                     if x < x_minimal:
                         raise ValueError(f"x exceeds minimum value for sub-rectangle. x is {x}, x_min is {x_minimal}.")
@@ -499,12 +504,12 @@ def create_corner_solution(shapes: list, log: Log, shape_types: list, h: float, 
                     shapes.append(Shape(shape_type=shape_type, x=x, y=y_north))
                     shapes.append(Shape(shape_type=shape_type, x=x,
                                         y=(log.diameter - h) / 2 - shape_type.height
-                                          - constants.saw_kerf))
+                                          - log.saw_kerf))
                     logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                                  f"h:{shape_type.height} at ({x}, "
-                                 f"{(log.diameter - h) / 2 - shape_type.height - constants.saw_kerf}) "
+                                 f"{(log.diameter - h) / 2 - shape_type.height - log.saw_kerf}) "
                                  f"and ({x}, {y_north})")
-                    x += shape_type.width + constants.saw_kerf
+                    x += shape_type.width + log.saw_kerf
                     if x > x_maximal:
                         raise ValueError(f"x exceeds maximum value for sub-rectangle. x is {x}, x_max is {x_maximal}")
     return shapes
@@ -520,7 +525,7 @@ def create_edge_solutions(shapes: list, log: Log, shape_types: list, h: float, h
     :param h_n: Height of North/South rectangles
     :return:
     """
-    min_y = (log.diameter + h) / 2 + h_n + 2 * constants.saw_kerf
+    min_y = (log.diameter + h) / 2 + h_n + 2 * log.saw_kerf
     max_y = log.diameter
     max_height = max_y - min_y
 
@@ -542,7 +547,7 @@ def create_edge_solutions(shapes: list, log: Log, shape_types: list, h: float, h
         w_t = x_max - x_min
 
         # If the shape is wider than that maximum space, it is not a feasible candidate solution
-        if shape.width + constants.saw_kerf > w_t:
+        if shape.width + log.saw_kerf > w_t:
             continue
         else:
 
@@ -554,7 +559,7 @@ def create_edge_solutions(shapes: list, log: Log, shape_types: list, h: float, h
                                 short_shape.width, short_shape.height, short_shape.type_id])
 
             # add constraint for maximum length
-            solver.Add(sum([v[0] * (v[1] + constants.saw_kerf) for v in var_top]) <= w_t)
+            solver.Add(sum([v[0] * (v[1] + log.saw_kerf) for v in var_top]) <= w_t)
             solver.Maximize(sum([v[0] * v[1] * v[2] for v in var_top]))
 
             status = solver.Solve()
@@ -587,11 +592,11 @@ def create_edge_solutions(shapes: list, log: Log, shape_types: list, h: float, h
             for i in range(quantity):
                 shapes.append(Shape(shape_type=shape_type, x=x, y=min_y))
                 shapes.append(Shape(shape_type=shape_type, x=x,
-                                    y=(log.diameter - h) / 2 - h_n - shape_type.height - 2 * constants.saw_kerf))
+                                    y=(log.diameter - h) / 2 - h_n - shape_type.height - 2 * log.saw_kerf))
                 logger.debug(f"Placing shapetype {shape_id} with w:{shape_type.width}, "
                              f"h:{shape_type.height} at ({x}, "
-                             f"{(log.diameter - h) / 2 - h_n - shape_type.height - constants.saw_kerf})"
+                             f"{(log.diameter - h) / 2 - h_n - shape_type.height - log.saw_kerf})"
                              f"and ({x}, {min_y})")
-                x += shape_type.width + constants.saw_kerf
+                x += shape_type.width + log.saw_kerf
 
     return shapes

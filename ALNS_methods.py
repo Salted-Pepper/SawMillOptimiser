@@ -161,34 +161,34 @@ def random_cluster_destroy(log: Log, **kwargs) -> tuple:
     height_steps = int(np.floor(removed_shape.height / (min_height_check - 1)))
 
     x_steps = ([removed_shape.x + i * min_width_check for i in range(width_steps + 1)]
-               + [removed_shape.x + removed_shape.width + constants.saw_kerf])
+               + [removed_shape.x + removed_shape.width + log.saw_kerf])
     y_steps = ([removed_shape.y + j * min_width_check for j in range(height_steps + 1)]
-               + [removed_shape.y + removed_shape.height + constants.saw_kerf])
+               + [removed_shape.y + removed_shape.height + log.saw_kerf])
     removed_shapes = [removed_shape]
     if plane == "horizontal":
         # remove shapes directly left and right of the shape
-        shapes_left = [s for s in log.shapes if s.x + s.width + constants.saw_kerf <= removed_shape.x]
-        shapes_right = [s for s in log.shapes if s.x >= removed_shape.x + removed_shape.width + constants.saw_kerf]
+        shapes_left = [s for s in log.shapes if s.x + s.width + log.saw_kerf <= removed_shape.x]
+        shapes_right = [s for s in log.shapes if s.x >= removed_shape.x + removed_shape.width + log.saw_kerf]
 
         for y_val in y_steps:
-            x_val = removed_shape.x - space_left - 2 * constants.saw_kerf
+            x_val = removed_shape.x - space_left - 2 * log.saw_kerf
             for shape in shapes_left:
                 # Select x to be an x value just past the point where another shape's edge has been located
                 if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
                     removed_shapes.append(shape)
-            x_val = removed_shape.x + removed_shape.width + space_right + 2 * constants.saw_kerf
+            x_val = removed_shape.x + removed_shape.width + space_right + 2 * log.saw_kerf
             for shape in shapes_right:
                 if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
                     removed_shapes.append(shape)
     else:
-        shapes_up = [s for s in log.shapes if s.y >= removed_shape.y + removed_shape.height + constants.saw_kerf]
-        shapes_down = [s for s in log.shapes if s.y + s.height + constants.saw_kerf <= removed_shape.y]
+        shapes_up = [s for s in log.shapes if s.y >= removed_shape.y + removed_shape.height + log.saw_kerf]
+        shapes_down = [s for s in log.shapes if s.y + s.height + log.saw_kerf <= removed_shape.y]
         for x_val in x_steps:
-            y_val = removed_shape.y - space_down - 2 * constants.saw_kerf
+            y_val = removed_shape.y - space_down - 2 * log.saw_kerf
             for shape in shapes_up:
                 if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
                     removed_shapes.append(shape)
-            y_val = removed_shape.y + removed_shape.height + space_up + 2 * constants.saw_kerf
+            y_val = removed_shape.y + removed_shape.height + space_up + 2 * log.saw_kerf
             for shape in shapes_down:
                 if shape not in removed_shapes and shape.check_if_point_in_shape(x=x_val, y=y_val):
                     removed_shapes.append(shape)
@@ -255,7 +255,8 @@ def subspace_destroy(log: Log, **kwargs) -> tuple:
     min_rect = []
     for rectangle in rectangles:
         x_0, x_1, y_0, y_1 = rectangle
-        efficiency, intersecting_shapes = log.calculate_efficiency_sub_rectangle(x_0, x_1, y_0, y_1)
+        efficiency, intersecting_shapes = log.calculate_efficiency_sub_rectangle(x_0, x_1, y_0, y_1,
+                                                                                 saw_kerf=log.saw_kerf)
         if efficiency < min_efficiency and len(intersecting_shapes) != 0:
             min_rect = [x_0, x_1, y_0, y_1, intersecting_shapes]
             min_efficiency = efficiency
@@ -332,21 +333,21 @@ def random_point_expansion(log: Log, shape_types: list, **kwargs) -> tuple:
 
     for shape in log.shapes:
         # see if shape is in same p_x dimension
-        if shape.x - constants.saw_kerf <= p_x <= shape.x + shape.width + constants.saw_kerf:
+        if shape.x - log.saw_kerf <= p_x <= shape.x + shape.width + log.saw_kerf:
             # Then a y-collision is possible
-            if p_y > shape.y + shape.height + constants.saw_kerf > lowest_y:
-                lowest_y = shape.y + shape.height + constants.saw_kerf
+            if p_y > shape.y + shape.height + log.saw_kerf > lowest_y:
+                lowest_y = shape.y + shape.height + log.saw_kerf
 
-            if p_y < shape.y - constants.saw_kerf < highest_y:
-                highest_y = shape.y - constants.saw_kerf
+            if p_y < shape.y - log.saw_kerf < highest_y:
+                highest_y = shape.y - log.saw_kerf
 
-        if shape.y - constants.saw_kerf <= p_y <= shape.y + shape.height + constants.saw_kerf:
+        if shape.y - log.saw_kerf <= p_y <= shape.y + shape.height + log.saw_kerf:
             # Then an x-collision is possible
-            if p_x > shape.x + shape.width + constants.saw_kerf > left_most_x:
-                left_most_x = shape.x + shape.width + constants.saw_kerf
+            if p_x > shape.x + shape.width + log.saw_kerf > left_most_x:
+                left_most_x = shape.x + shape.width + log.saw_kerf
 
-            if p_x < shape.x - constants.saw_kerf < right_most_x:
-                right_most_x = shape.x - constants.saw_kerf
+            if p_x < shape.x - log.saw_kerf < right_most_x:
+                right_most_x = shape.x - log.saw_kerf
     # logger.debug(f"After checking shape collisions x_l {left_most_x: .2f}, x_r {right_most_x: .2f}, "
     #              f"y_min {lowest_y: .2f}, y_max {highest_y: .2f}.")
     successful = ALNS_tools.fit_defined_rectangle(left_most_x, right_most_x, lowest_y, highest_y, log, shape_types)
@@ -407,7 +408,7 @@ def buddy_extension_repair(log: Log, shape_types: list, **kwargs) -> tuple:
     successful = False
 
     shape = select_random_shapes_from_log(log)
-    sk = constants.saw_kerf
+    sk = log.saw_kerf
     location_pairs = [[shape.x, shape.y - 2 * sk], [shape.x - 2 * sk, shape.y],  # Bot left
                       [shape.x, shape.y + shape.height + 2 * sk], [shape.x - 2 * sk, shape.y + shape.height],
                       # Top left

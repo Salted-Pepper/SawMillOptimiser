@@ -260,12 +260,14 @@ def check_if_rectangle_empty(x_0: float, x_1: float, y_0: float, y_1: float, log
 
 
 def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max: float,
-                                candidate_shapes: list, shape_types: list, shapes: list = None) -> tuple:
+                                candidate_shapes: list, shape_types: list, saw_kerf: float,
+                                shapes: list = None) -> tuple:
     """
     This function applies an LP solver to a given space, optimising the space for the given candidate shapes.
     The given space, described by (x,y)-values, includes the saw kerf on the sides.
     It returns a new set of shapes that can be added in the described location.
 
+    :param saw_kerf: Saw kerf in mm
     :param x_min: Left side x-value
     :param x_max: Right side x-value
     :param y_min: Bottom side y-value
@@ -280,8 +282,8 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
     if shapes is None:
         shapes = []
 
-    width = x_max - x_min - 2 * constants.saw_kerf
-    height = y_max - y_min - 2 * constants.saw_kerf
+    width = x_max - x_min - 2 * saw_kerf
+    height = y_max - y_min - 2 * saw_kerf
 
     # Horizontal Solutions
     candidate_shapes = [s for s in candidate_shapes if s.width <= width]
@@ -298,7 +300,7 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
                               short_shape.width, short_shape.height, short_shape.type_id])
 
             # add constraint for maximum length
-            solver.Add(sum([v[0] * (v[1] + constants.saw_kerf) for v in variables]) <= width)
+            solver.Add(sum([v[0] * (v[1] + saw_kerf) for v in variables]) <= width)
             solver.Maximize(sum([v[0] * v[1] * v[2] for v in variables]))
 
         status = solver.Solve()
@@ -331,7 +333,7 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
                               short_shape.width, short_shape.height, short_shape.type_id])
 
             # add constraint for maximum length
-            solver.Add(sum([v[0] * (v[2] + constants.saw_kerf) for v in variables]) <= height)
+            solver.Add(sum([v[0] * (v[2] + saw_kerf) for v in variables]) <= height)
             solver.Maximize(sum([v[0] * v[1] * v[2] for v in variables]))
 
         status = solver.Solve()
@@ -361,7 +363,7 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
     z_maximal = best_solution[2][2]
     orientation = best_solution[3]
 
-    z = z_minimal + constants.saw_kerf
+    z = z_minimal + saw_kerf
 
     # Create a list of shapes with locations corresponding to solution
     for shape_info in shapes_sol:
@@ -374,7 +376,7 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
                 shapes.append(Shape(shape_type=shape_type, x=z, y=y_min))
                 # logger.debug(f"Suggesting shape {shape_type.type_id} with {shape_type.width}x{shape_type.height},"
                 #              f" at location {z: .2f}, {y_min: .2f}")
-                z += shape_type.width + constants.saw_kerf
+                z += shape_type.width + saw_kerf
                 if z > z_maximal:
                     raise ValueError(f"Exceeding maximum x-value {z} > {z_maximal}.")
         elif orientation == "Vertical":
@@ -382,7 +384,7 @@ def fit_shapes_in_rect_using_lp(x_min: float, x_max: float, y_min: float, y_max:
                 shapes.append(Shape(shape_type=shape_type, x=x_min, y=z))
                 # logger.debug(f"Suggesting shape {shape_type.type_id} with {shape_type.width}x{shape_type.height}, "
                 #              f"at location {x_min:.2f}, {z:.2f}")
-                z += shape_type.height + constants.saw_kerf
+                z += shape_type.height + saw_kerf
                 if z > z_maximal:
                     raise ValueError(f"Exceeding maximum y-value {z} > {z_maximal}.")
 
@@ -421,8 +423,8 @@ def fit_points_in_boundaries(left_x, right_x, low_y, high_y, log: Log, priority:
     return left_x, right_x, low_y, high_y
 
 
-def check_if_shape_in_rectangle(shape: Shape, x_0, x_1, y_0, y_1) -> bool:
-    sk = constants.saw_kerf
+def check_if_shape_in_rectangle(shape: Shape, x_0, x_1, y_0, y_1, saw_kerf: float) -> bool:
+    sk = saw_kerf
     a_x_0 = shape.x
     a_x_1 = shape.x + shape.width
     a_y_0 = shape.y
@@ -507,28 +509,28 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
     for shape in violating_shapes:
         # Check if shape still violates cut, as previous cuts could have put this shape out of violation
         violates = check_if_shape_in_rectangle(shape=shape, x_0=left_most_x, x_1=right_most_x,
-                                               y_0=lowest_y, y_1=highest_y)
+                                               y_0=lowest_y, y_1=highest_y, saw_kerf=log.saw_kerf)
         if not violates:
             # logging.debug("No violation")
             continue
 
         # There are 4 possible cuts - find the cut that loses the least surface area
-        cut_upper_off = (right_most_x - left_most_x) * ((shape.y - constants.saw_kerf) - lowest_y)
-        cut_lower_off = (right_most_x - left_most_x) * (highest_y - (shape.y + shape.height + constants.saw_kerf))
-        cut_left_off = (right_most_x - (shape.x + shape.width + constants.saw_kerf)) * (highest_y - lowest_y)
-        cut_right_off = ((shape.x - constants.saw_kerf) - left_most_x) * (highest_y - lowest_y)
+        cut_upper_off = (right_most_x - left_most_x) * ((shape.y - log.saw_kerf) - lowest_y)
+        cut_lower_off = (right_most_x - left_most_x) * (highest_y - (shape.y + shape.height + log.saw_kerf))
+        cut_left_off = (right_most_x - (shape.x + shape.width + log.saw_kerf)) * (highest_y - lowest_y)
+        cut_right_off = ((shape.x - log.saw_kerf) - left_most_x) * (highest_y - lowest_y)
         cuts = [cut_upper_off, cut_lower_off, cut_left_off, cut_right_off]
 
         # Update Values Based On Selected Optimal Cut
         largest_remaining_cut = max(cuts)
         if cut_upper_off == largest_remaining_cut:
-            highest_y = shape.y - constants.saw_kerf
+            highest_y = shape.y - log.saw_kerf
         elif cut_lower_off == largest_remaining_cut:
-            lowest_y = shape.y + shape.height + constants.saw_kerf
+            lowest_y = shape.y + shape.height + log.saw_kerf
         elif cut_left_off == largest_remaining_cut:
-            left_most_x = shape.x + shape.width + constants.saw_kerf
+            left_most_x = shape.x + shape.width + log.saw_kerf
         else:
-            right_most_x = shape.x - constants.saw_kerf
+            right_most_x = shape.x - log.saw_kerf
 
     # logger.debug(f"Post calc - y: {highest_y}, {lowest_y}, x: {right_most_x}, {left_most_x}")
 
@@ -550,11 +552,11 @@ def fit_defined_rectangle(left_most_x: float, right_most_x: float,
     new_shapes_wide, usage_wide = fit_shapes_in_rect_using_lp(x_min=left_x_width, x_max=right_x_width,
                                                               y_min=low_y_width, y_max=top_y_width,
                                                               candidate_shapes=wide_candidate_shapes,
-                                                              shape_types=shape_types, shapes=[])
+                                                              shape_types=shape_types, shapes=[], saw_kerf=log.saw_kerf)
     new_shapes_high, usage_high = fit_shapes_in_rect_using_lp(x_min=left_x_height, x_max=right_x_height,
                                                               y_min=low_y_height, y_max=top_y_height,
                                                               candidate_shapes=high_candidate_shapes,
-                                                              shape_types=shape_types, shapes=[])
+                                                              shape_types=shape_types, shapes=[], saw_kerf=log.saw_kerf)
 
     if usage_wide == usage_high == 0:
         # logger.debug("No feasible solution")
