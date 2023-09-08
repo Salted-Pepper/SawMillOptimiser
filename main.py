@@ -225,7 +225,7 @@ if __name__ == '__main__':
     """
     path = os.getcwd()
     try:
-        df_shapes = pd.read_excel(os.path.join(path, "ShapeData.xlsx"))
+        df_shapes = pd.read_excel(os.path.join(path, "Input.xlsx"))
     except FileNotFoundError:
         df_shapes = pd.DataFrame()
     """
