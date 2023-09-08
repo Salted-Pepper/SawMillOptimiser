@@ -217,13 +217,24 @@ shape_types = []
 root = tk.Tk()
 root.title("Sawmill Optimiser")
 root.geometry("1200x900")
-root.iconbitmap("saw.ico")
+if os.path.exists("saw.ico"):
+    root.iconbitmap("saw.ico")
 
 if __name__ == '__main__':
     """
     Import Shape Data
     """
     path = os.getcwd()
+    if os.path.exists("plots"):
+        pass
+    else:
+        os.makedirs("plots")
+
+    if os.path.exists("logs"):
+        pass
+    else:
+        os.makedirs("logs")
+
     try:
         df_shapes = pd.read_excel(os.path.join(path, "Input.xlsx"))
     except FileNotFoundError:

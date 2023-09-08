@@ -128,7 +128,8 @@ class Log:
 
     def save_log_plot(self):
         date_time = datetime.datetime.now()
-        self.fig.savefig(f"plots/log_{self.log_id}_{date_time.strftime('%d_%m_%Y_%H_%M_%S')}.png")
+        self.fig.savefig(os.path.join(os.getcwd(),
+                                      f"plots/log_{self.log_id}_{date_time.strftime('%d_%m_%Y_%H_%M_%S')}.png"))
 
     def calculate_edge_positions_on_circle(self, z: float) -> tuple:
         r = self.diameter / 2
