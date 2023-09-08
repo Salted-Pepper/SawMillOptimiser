@@ -12,13 +12,14 @@ from logs import Log
 import math
 from ALNS_methods import Method, update_method_probability
 from ortools.linear_solver import pywraplp
+import os
 
 import ALNS_tools
 import constants
 from shapes import Shape
 
 date = datetime.date.today()
-logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
+logging.basicConfig(level=logging.DEBUG, filename=os.path.join(os.getcwd(), 'logs/saw_mill_app' + str(date) + '.log'),
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%d-%b-%y %H:%M:%S")
 logger = logging.getLogger("ALNS_Logger")
 logging.getLogger("matplotlib").setLevel(logging.WARNING)

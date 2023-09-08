@@ -3,12 +3,13 @@ import matplotlib.colors as mcolors
 import logging
 import datetime
 import constants
+import os
 
 shape_id = 0
 type_id = 0
 
 date = datetime.date.today()
-logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
+logging.basicConfig(level=logging.DEBUG, filename=os.path.join(os.getcwd(), 'logs/saw_mill_app' + str(date) + '.log'),
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%H:%M:%S")
 logger = logging.getLogger("Shapes")
 logger.setLevel(logging.DEBUG)

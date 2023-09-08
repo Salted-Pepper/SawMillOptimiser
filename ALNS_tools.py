@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import random
 import datetime
+import os
 
 import matplotlib.pyplot as plt
 
@@ -14,7 +15,7 @@ from shapes import Shape
 from logs import Log
 
 date = datetime.date.today()
-logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
+logging.basicConfig(level=logging.DEBUG, filename=os.path.join(os.getcwd(), 'logs/saw_mill_app' + str(date) + '.log'),
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%H:%M:%S")
 logger = logging.getLogger("ALNS_Tools")
 logger.setLevel(logging.DEBUG)

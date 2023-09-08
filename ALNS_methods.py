@@ -6,13 +6,14 @@ import logging
 import datetime
 import math
 import time
+import os
 
 import ALNS_tools
 from shapes import Shape
 from logs import Log, select_random_shapes_from_log
 
 date = datetime.date.today()
-logging.basicConfig(level=logging.DEBUG, filename='saw_mill_app_' + str(date) + '.log',
+logging.basicConfig(level=logging.DEBUG, filename=os.path.join(os.getcwd(), 'logs/saw_mill_app' + str(date) + '.log'),
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', datefmt="%H:%M:%S")
 logger = logging.getLogger("ALNS_Methods")
 logger.setLevel(logging.DEBUG)
