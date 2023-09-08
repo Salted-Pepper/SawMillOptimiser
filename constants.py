@@ -34,8 +34,8 @@ smallest_total_shapes = []
 log_selection_accepted = 0.99
 log_selection_rejected = 0.9
 
-method_sensitivity_acceptance = 0.99
-method_sensitivity_rejection = 0.98
+method_sensitivity_acceptance = 0.999
+method_sensitivity_rejection = 0.998
 
 # Score parameters
 usage_multiplier = 1

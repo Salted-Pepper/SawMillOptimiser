@@ -494,6 +494,7 @@ class Method:
         self.seconds_success = 0
         self.seconds_failure = 0
         self.iteration_succeed = 0
+        self.tried_in_current_iteration = 0
 
         if name.startswith("TUCK"):
             self.method_function = tuck
@@ -528,6 +529,7 @@ class Method:
         self.method_used = True
 
         while attempts < constants.max_attempts and repeat:
+            self.tried_in_current_iteration += 1
             if len(log.shapes) > 0:
                 succeeded, duration = self.method_function(name=self.name, log=log, shape_types=shape_types)
             else:
@@ -553,17 +555,24 @@ class Method:
 def update_method_probability(methods: list, accepted_solution) -> None:
     for method in methods:
         if accepted_solution and method.method_used:
-            method.performance = (method.performance * constants.method_sensitivity_acceptance *
-                                  max(0.1, math.sqrt(method.total_succeeded / method.total_attempted)))
+            method.performance = (method.performance * constants.method_sensitivity_acceptance **
+                                  (method.tried_in_current_iteration/constants.max_attempts))
         elif method.method_used:
             method.performance = (method.performance * constants.method_sensitivity_rejection **
-                                  (1 + method.iteration_succeed/constants.max_attempts))
+                                  (1 + (method.tried_in_current_iteration/constants.max_attempts)))
 
     total_performance = sum([method.performance for method in methods])
+    if total_performance < 1:
+        print(f"total performance is {total_performance}")
+        for method in methods:
+            print(f"Method {method.name} performance is {method.performance}")
+
     for method in methods:
         logger.debug(f"Updating method {method.name} from {method.probability} to "
                      f"{method.performance / total_performance} - Method Used?: {method.method_used}")
         method.probability = method.performance / total_performance
-        method.performance = method.performance * 10
+        # Normalize performances
+        method.performance = (method.performance / total_performance) * 100
         method.method_used = False
         method.iteration_succeed = 0
+        method.tried_in_current_iteration = 0

@@ -122,7 +122,7 @@ def check_if_new_solution_better(log_old: Log, log_new: Log, temperature: float)
 def update_temperature(temperature: float, updated: bool, delta: float, score: float) -> float:
     if updated and delta != 0:
         logger.debug(f"Multiplying temperature by {(1 + (delta / score) ** 2)}")
-        temperature = temperature * (1 + (delta / score) ** 2)
+        temperature = temperature * (1 + (delta / score))
     else:
         temperature = temperature * constants.temperature_sensitivity
     return temperature
@@ -147,6 +147,23 @@ def save_iteration_data(logs: list, df: pd.DataFrame, iteration: int) -> pd.Data
         df.loc[len(df)] = {"iteration": iteration, "log": log.log_id, "score": log.score,
                            "saw_dust": log.saw_dust, "volume_used": log.volume_used, "efficiency": log.efficiency}
 
+    return df
+
+
+def save_parameter_data(df: pd.DataFrame, iteration: int, temperature: float, rep_degree, des_degree):
+    """
+    :param df: Dataframe with general parameters per iteration
+    :param iteration: Current iteration number
+    :param temperature:
+    :param rep_degree: Repair degree
+    :param des_degree: Destroy degree
+    :return:
+    """
+
+    df.loc[len(df)] = {'iteration': iteration,
+                       'temperature': temperature,
+                       'repair_degree': rep_degree,
+                       'destroy_degree': des_degree}
     return df
 
 
@@ -613,4 +630,16 @@ def plot_method_data(df) -> None:
     fig.savefig(f"plots/methods_probability.png")
     fig_2.savefig(f"plots/methods_use.png")
 
+    plt.show()
+
+
+def plot_parameter_data(df):
+    fig, ax = plt.subplots()
+    ax.set_title("Temperature over Time")
+    ax.plot(df["iteration"], df["temperature"])
+    ax.set_xlabel("Iteration")
+    ax.set_ylabel("Temperature")
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+    fig.savefig(f"plots/temperature_data.png")
     plt.show()

@@ -5,6 +5,7 @@ from shapes import ShapeType
 import ALNS
 import time
 import pandas as pd
+import os
 
 import tkinter as tk
 
@@ -12,9 +13,6 @@ import tkinter as tk
 default measurement: millimeters
 default dimensionality: height x width
 """
-
-
-# TODO: Saw kerf per log check
 
 
 def gui_throw_basic_message(title, text):
@@ -128,9 +126,9 @@ def apply_ALNS(list_of_logs: list, list_of_shape_types: list, progress_label: tk
     progress_label.config(text=progress_label.cget("text") + " \n Established Initial Solution...")
     root.update()
 
-    solution_quality_df, method_df = ALNS.run_ALNS(logs=list_of_logs,
-                                                   shape_types=list_of_shape_types,
-                                                   root=root, progress_label=progress_label)
+    solution_quality_df, method_df, parameter_df = ALNS.run_ALNS(logs=list_of_logs,
+                                                                 shape_types=list_of_shape_types,
+                                                                 root=root, progress_label=progress_label)
 
     ALNS_tools.check_feasibility(list_of_logs=list_of_logs)
 
@@ -140,6 +138,7 @@ def apply_ALNS(list_of_logs: list, list_of_shape_types: list, progress_label: tk
 
     ALNS_tools.plot_efficiency_data(logs=list_of_logs, df=solution_quality_df)
     ALNS_tools.plot_method_data(method_df)
+    ALNS_tools.plot_parameter_data(parameter_df)
 
     return solution_quality_df, method_df
 
@@ -224,7 +223,11 @@ if __name__ == '__main__':
     """
     Import Shape Data
     """
-    df_shapes = pd.read_excel("ShapeData.xlsx")
+    path = os.getcwd()
+    try:
+        df_shapes = pd.read_excel(os.path.join(path, "ShapeData.xlsx"))
+    except FileNotFoundError:
+        df_shapes = pd.DataFrame()
     """
     Create User Interface for inputs
     """
@@ -258,7 +261,10 @@ if __name__ == '__main__':
     shape_types = []
 
     for index, row in df_shapes.iterrows():
-        gui_add_input_shape(shape_frame, width=row['w'], height=row['h'], colour=row['colour'])
+        if 'colour' in df_shapes.columns:
+            gui_add_input_shape(shape_frame, width=row['w'], height=row['h'], colour=row['colour'])
+        else:
+            gui_add_input_shape(shape_frame, width=row['w'], height=row['h'])
 
     input_shapes_title = tk.Label(shape_frame, text="Input Shape Sizes", font='Helvetica 20 bold')
     input_shapes_title.grid(row=0, column=0, columnspan=3)

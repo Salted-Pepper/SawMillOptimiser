@@ -32,6 +32,7 @@ def run_ALNS(logs: list, shape_types: list, root: tk.Tk, progress_label: tk.Labe
     solution_quality_df = pd.DataFrame(columns=["iteration", "log", "score", "saw_dust", "volume_used", "efficiency"])
     method_df = pd.DataFrame(columns=["iteration", "method", "probability",
                                       "times_called", "times_tried", "times_success"])
+    parameter_df = pd.DataFrame(columns=["iteration", "temperature"])
     iteration = 1
     temperature = constants.starting_temperature
     destroy_degree = 2
@@ -176,6 +177,11 @@ def run_ALNS(logs: list, shape_types: list, root: tk.Tk, progress_label: tk.Labe
                      f"destroy degree - {destroy_degree: .2f}, repair degree - {repair_degree: .2f}")
         update_method_probability(repair_methods, accept_new_solution)
         update_method_probability(destroy_methods, accept_new_solution)
+        parameter_df = ALNS_tools.save_parameter_data(df=parameter_df,
+                                                      iteration=iteration,
+                                                      temperature=temperature,
+                                                      rep_degree=repair_degree,
+                                                      des_degree=destroy_degree)
         solution_quality_df = ALNS_tools.save_iteration_data(logs, solution_quality_df, iteration)
         method_df = ALNS_tools.save_method_data(repair_methods + destroy_methods, method_df, iteration)
         iteration += 1
@@ -188,7 +194,7 @@ def run_ALNS(logs: list, shape_types: list, root: tk.Tk, progress_label: tk.Labe
             for log in logs:
                 logging.debug(f"Log {log.log_id} has weight {log.selection_weight}")
         t_1 = time.perf_counter()
-        print(f"Iteration {iteration} - Time required {(t_1 - t_0)/60 :.2f}")
+        logger.debug(f"Iteration {iteration} - Time required {(t_1 - t_0)/60 :.2f}")
 
     # Push shapes to centre at end
     for log in logs:
@@ -196,7 +202,7 @@ def run_ALNS(logs: list, shape_types: list, root: tk.Tk, progress_label: tk.Labe
             tuck_methods[0].execute(log, shape_types)
     ALNS_tools.report_method_stats(repair_methods + destroy_methods + tuck_methods)
 
-    return solution_quality_df, method_df
+    return solution_quality_df, method_df, parameter_df
 
 
 def greedy_place(all_shapes: list, shape_types: list, logs: list) -> None:
