@@ -175,6 +175,9 @@ def gui_add_input_shape(frame, width=None, height=None, colour=None):
         shape.width_input.insert(0, width)
         shape.height_input.insert(0, height)
         shape.colour_input.insert(0, colour)
+    elif width is not None and height is not None:
+        shape.width_input.insert(0, width)
+        shape.height_input.insert(0, height)
 
     shape.remove_button = tk.Button(frame, text="Delete", command=lambda: gui_remove_shape(shape))
 
