@@ -1,3 +1,7 @@
+import os
+if not os.path.exists("logs"):
+    os.makedirs("logs")
+
 import ALNS_tools
 import constants
 from logs import Log
@@ -5,7 +9,6 @@ from shapes import ShapeType
 import ALNS
 import time
 import pandas as pd
-import os
 
 import tkinter as tk
 
@@ -220,20 +223,14 @@ root.geometry("1200x900")
 if os.path.exists("saw.ico"):
     root.iconbitmap("saw.ico")
 
+if not os.path.exists("plots"):
+    os.makedirs("plots")
+
 if __name__ == '__main__':
     """
     Import Shape Data
     """
     path = os.getcwd()
-    if os.path.exists("plots"):
-        pass
-    else:
-        os.makedirs("plots")
-
-    if os.path.exists("logs"):
-        pass
-    else:
-        os.makedirs("logs")
 
     try:
         df_shapes = pd.read_excel(os.path.join(path, "Input.xlsx"))
